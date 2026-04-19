@@ -68,11 +68,47 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const categoryNamesByProduct = new Map<string, string[]>()
+  if (ids.length > 0) {
+    const catRows = await db
+      .select({
+        productId: schema.productCategories.productId,
+        name: schema.categories.name,
+      })
+      .from(schema.productCategories)
+      .innerJoin(
+        schema.categories,
+        eq(schema.productCategories.categoryId, schema.categories.id),
+      )
+      .where(inArray(schema.productCategories.productId, ids))
+      .orderBy(
+        asc(schema.productCategories.sortOrder),
+        asc(schema.productCategories.id),
+      )
+    for (const r of catRows) {
+      const list = categoryNamesByProduct.get(r.productId) ?? []
+      list.push(r.name)
+      categoryNamesByProduct.set(r.productId, list)
+    }
+  }
+
+  function formatCategorySummary(names: string[]) {
+    if (names.length === 0) return '—'
+    const head = names.slice(0, 4)
+    const rest = names.length - head.length
+    return rest > 0 ? `${head.join('、')} 等 ${names.length} 個` : head.join('、')
+  }
+
   return {
-    items: rows.map((r) => ({
-      ...r,
-      variantCount: variantCountMap.get(r.id) ?? 0,
-    })),
+    items: rows.map((r) => {
+      const catNames = categoryNamesByProduct.get(r.id) ?? []
+      return {
+        ...r,
+        variantCount: variantCountMap.get(r.id) ?? 0,
+        categoryCount: catNames.length,
+        categorySummary: formatCategorySummary(catNames),
+      }
+    }),
     page,
     pageSize,
     total,

@@ -14,6 +14,7 @@ const form = reactive({
 
 const coverAttachmentId = ref<string | null>(null)
 const galleryItems = ref<ProductMediaItem[]>([])
+const categoryIds = ref<string[]>([])
 
 const saving = ref(false)
 const err = ref<string | null>(null)
@@ -32,6 +33,7 @@ async function submit() {
         basePrice: form.basePrice,
         coverAttachmentId: coverAttachmentId.value,
         galleryAttachmentIds: galleryItems.value.map((g) => g.id),
+        categoryIds: categoryIds.value,
       },
     })
     await navigateTo(`/admin/products/${res.product.id}`)
@@ -75,6 +77,8 @@ async function submit() {
         label="基準價（NUMERIC 字串）"
         required
       />
+
+      <AdminProductCategoryFields v-model="categoryIds" />
 
       <AdminProductMediaFields
         v-model:cover-attachment-id="coverAttachmentId"

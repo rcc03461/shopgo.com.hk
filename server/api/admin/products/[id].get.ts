@@ -86,6 +86,36 @@ export default defineEventHandler(async (event) => {
     serializeAttachment(r.attachment),
   )
 
+  const categoryRows = await db
+    .select({
+      id: schema.categories.id,
+      name: schema.categories.name,
+      slug: schema.categories.slug,
+      sortOrder: schema.productCategories.sortOrder,
+    })
+    .from(schema.productCategories)
+    .innerJoin(
+      schema.categories,
+      eq(schema.productCategories.categoryId, schema.categories.id),
+    )
+    .where(
+      and(
+        eq(schema.productCategories.productId, productId),
+        eq(schema.categories.tenantId, session.tenantId),
+      ),
+    )
+    .orderBy(
+      asc(schema.productCategories.sortOrder),
+      asc(schema.productCategories.id),
+    )
+
+  const categoriesOut = categoryRows.map((c) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    sortOrder: c.sortOrder,
+  }))
+
   const options = await db
     .select()
     .from(schema.productOptions)
@@ -183,6 +213,7 @@ export default defineEventHandler(async (event) => {
       coverAttachmentId: product.coverAttachmentId,
       cover,
       galleryAttachments,
+      categories: categoriesOut,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     },

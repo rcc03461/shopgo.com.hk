@@ -31,6 +31,12 @@ type Detail = {
     coverAttachmentId: string | null
     cover: AttachmentDto | null
     galleryAttachments: AttachmentDto[]
+    categories: Array<{
+      id: string
+      name: string
+      slug: string
+      sortOrder: number
+    }>
     updatedAt: string
   }
   options: Array<{
@@ -71,6 +77,7 @@ const form = reactive({
 
 const coverAttachmentId = ref<string | null>(null)
 const galleryItems = ref<ProductMediaItem[]>([])
+const categoryIds = ref<string[]>([])
 
 function toMediaItem(a: AttachmentDto): ProductMediaItem {
   return {
@@ -90,6 +97,7 @@ watch(
     form.basePrice = v.product.basePrice
     coverAttachmentId.value = v.product.coverAttachmentId
     galleryItems.value = v.product.galleryAttachments.map(toMediaItem)
+    categoryIds.value = (v.product.categories ?? []).map((c) => c.id)
   },
   { immediate: true },
 )
@@ -111,6 +119,7 @@ async function saveMain() {
         basePrice: form.basePrice,
         coverAttachmentId: coverAttachmentId.value,
         galleryAttachmentIds: galleryItems.value.map((g) => g.id),
+        categoryIds: categoryIds.value,
       },
     })
     await refresh()
@@ -220,6 +229,8 @@ const coverPreview = computed<ProductMediaItem | null>(() => {
           label="基準價（NUMERIC 字串）"
           required
         />
+
+        <AdminProductCategoryFields v-model="categoryIds" />
 
         <AdminProductMediaFields
           v-model:cover-attachment-id="coverAttachmentId"

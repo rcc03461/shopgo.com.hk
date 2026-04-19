@@ -6,6 +6,7 @@ import { getPgSqlState, summarizeDbErrorForLog } from '../../../utils/dbErrors'
 import { adminCreateProductBodySchema } from '../../../utils/productSchemas'
 import { requireTenantSession } from '../../../utils/requireTenantSession'
 import { syncProductMedia } from '../../../utils/productAttachmentSync'
+import { syncProductCategories } from '../../../utils/productCategorySync'
 
 export default defineEventHandler(async (event) => {
   const session = await requireTenantSession(event)
@@ -42,6 +43,13 @@ export default defineEventHandler(async (event) => {
         coverAttachmentId: data.coverAttachmentId ?? null,
         galleryAttachmentIds: data.galleryAttachmentIds ?? [],
       })
+
+      await syncProductCategories(
+        tx,
+        session.tenantId,
+        row.id,
+        data.categoryIds ?? [],
+      )
 
       const [out] = await tx
         .select()

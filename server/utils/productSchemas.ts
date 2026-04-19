@@ -16,6 +16,10 @@ export const decimalStringSchema = z
   .trim()
   .regex(/^\d+(\.\d{1,4})?$/, '價格格式不正確（最多四位小數）')
 
+const categoryIdsSchema = z
+  .array(z.string().uuid())
+  .max(64, '單一商品最多 64 個分類')
+
 export const adminCreateProductBodySchema = z.object({
   title: z.string().trim().min(1, '請填寫名稱').max(255),
   slug: productSlugSchema,
@@ -29,6 +33,7 @@ export const adminCreateProductBodySchema = z.object({
   basePrice: decimalStringSchema,
   coverAttachmentId: uuidNullable.optional(),
   galleryAttachmentIds: z.array(z.string().uuid()).optional().default([]),
+  categoryIds: categoryIdsSchema.optional().default([]),
 })
 
 export const adminPatchProductBodySchema = z.object({
@@ -44,6 +49,7 @@ export const adminPatchProductBodySchema = z.object({
   basePrice: decimalStringSchema.optional(),
   coverAttachmentId: uuidNullable.optional(),
   galleryAttachmentIds: z.array(z.string().uuid()).optional(),
+  categoryIds: categoryIdsSchema.optional(),
 })
 
 const catalogOptionValueSchema = z.object({

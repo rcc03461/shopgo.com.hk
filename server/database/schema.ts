@@ -1,3 +1,4 @@
+import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 import {
   bigint,
   index,
@@ -118,6 +119,59 @@ export const products = pgTable(
   (t) => [
     uniqueIndex('products_tenant_id_slug_uidx').on(t.tenantId, t.slug),
     index('products_tenant_id_idx').on(t.tenantId),
+  ],
+)
+
+/** 租戶商品分類（可選父子層級；前台 slug 在租戶內唯一） */
+export const categories = pgTable(
+  'categories',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    parentId: uuid('parent_id').references((): AnyPgColumn => categories.id, {
+      onDelete: 'set null',
+    }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    slug: varchar('slug', { length: 255 }).notNull(),
+    name: varchar('name', { length: 255 }).notNull(),
+    description: text('description'),
+    status: varchar('status', { length: 32 }).notNull().default('active'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex('categories_tenant_id_slug_uidx').on(t.tenantId, t.slug),
+    index('categories_tenant_id_idx').on(t.tenantId),
+    index('categories_parent_id_idx').on(t.parentId),
+  ],
+)
+
+/** 商品與分類多對多（`sort_order` 為該商品上的分類排序） */
+export const productCategories = pgTable(
+  'product_categories',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+  },
+  (t) => [
+    uniqueIndex('product_categories_product_category_uidx').on(
+      t.productId,
+      t.categoryId,
+    ),
+    index('product_categories_product_id_idx').on(t.productId),
+    index('product_categories_category_id_idx').on(t.categoryId),
   ],
 )
 

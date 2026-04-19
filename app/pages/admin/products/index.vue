@@ -10,6 +10,8 @@ type Row = {
   basePrice: string
   updatedAt: string
   variantCount: number
+  categoryCount: number
+  categorySummary: string
 }
 
 const q = ref('')
@@ -118,6 +120,7 @@ function onSearchInput() {
             <th class="px-4 py-3">名稱</th>
             <th class="px-4 py-3">Slug</th>
             <th class="px-4 py-3">SKU 數</th>
+            <th class="px-4 py-3">分類</th>
             <th class="px-4 py-3">基準價</th>
             <th class="px-4 py-3">更新</th>
             <th class="px-4 py-3" />
@@ -125,12 +128,12 @@ function onSearchInput() {
         </thead>
         <tbody class="divide-y divide-neutral-200">
           <tr v-if="pending">
-            <td colspan="6" class="px-4 py-6 text-center text-neutral-500">
+            <td colspan="7" class="px-4 py-6 text-center text-neutral-500">
               載入中…
             </td>
           </tr>
           <tr v-else-if="!data?.items.length">
-            <td colspan="6" class="px-4 py-6 text-center text-neutral-500">
+            <td colspan="7" class="px-4 py-6 text-center text-neutral-500">
               尚無商品
             </td>
           </tr>
@@ -147,6 +150,12 @@ function onSearchInput() {
             </td>
             <td class="px-4 py-3 text-neutral-700">
               {{ row.variantCount }}
+            </td>
+            <td
+              class="max-w-[12rem] truncate px-4 py-3 text-xs text-neutral-700"
+              :title="row.categorySummary"
+            >
+              {{ row.categorySummary }}
             </td>
             <td class="px-4 py-3 text-neutral-700">
               {{ formatPrice(row.basePrice) }}

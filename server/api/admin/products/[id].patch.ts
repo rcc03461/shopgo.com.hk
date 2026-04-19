@@ -8,6 +8,7 @@ import {
   loadProductGalleryIds,
   syncProductMedia,
 } from '../../../utils/productAttachmentSync'
+import { syncProductCategories } from '../../../utils/productCategorySync'
 import { adminPatchProductBodySchema } from '../../../utils/productSchemas'
 import { requireTenantSession } from '../../../utils/requireTenantSession'
 
@@ -35,6 +36,8 @@ export default defineEventHandler(async (event) => {
 
   const wantsMedia =
     'coverAttachmentId' in patch || 'galleryAttachmentIds' in patch
+
+  const wantsCategories = 'categoryIds' in patch
 
   const db = getDb(event)
 
@@ -104,6 +107,15 @@ export default defineEventHandler(async (event) => {
           coverAttachmentId: cover,
           galleryAttachmentIds: gallery,
         })
+      }
+
+      if (wantsCategories) {
+        await syncProductCategories(
+          tx,
+          session.tenantId,
+          productId,
+          patch.categoryIds ?? [],
+        )
       }
 
       const [finalRow] = await tx
