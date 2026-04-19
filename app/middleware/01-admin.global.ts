@@ -7,8 +7,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const tenantSlug = useState<string | null>('oshop-tenant-slug')
   const config = useRuntimeConfig()
   const root = String(config.public.tenantRootDomain || 'oshop.com.hk')
+  const isAdminPublicEntry =
+    to.path === '/admin/login' || to.path === '/admin/register'
 
   if (!tenantSlug.value) {
+    if (isAdminPublicEntry) return
     const url = useRequestURL()
     const port = url.port ? `:${url.port}` : ''
     const mainOrigin = `${url.protocol}//${root}${port}`
