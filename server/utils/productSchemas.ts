@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+const uuidNullable = z.union([z.string().uuid(), z.null()])
+
 /** 商品 slug：小寫、數字、連字號（與前台 URL 相容） */
 export const productSlugSchema = z
   .string()
@@ -25,7 +27,8 @@ export const adminCreateProductBodySchema = z.object({
     .nullable()
     .transform((v) => (v === '' ? null : v)),
   basePrice: decimalStringSchema,
-  imageUrls: z.array(z.string().trim().max(2000)).optional().default([]),
+  coverAttachmentId: uuidNullable.optional(),
+  galleryAttachmentIds: z.array(z.string().uuid()).optional().default([]),
 })
 
 export const adminPatchProductBodySchema = z.object({
@@ -39,7 +42,8 @@ export const adminPatchProductBodySchema = z.object({
     .nullable()
     .transform((v) => (v === '' ? null : v)),
   basePrice: decimalStringSchema.optional(),
-  imageUrls: z.array(z.string().trim().max(2000)).optional(),
+  coverAttachmentId: uuidNullable.optional(),
+  galleryAttachmentIds: z.array(z.string().uuid()).optional(),
 })
 
 const catalogOptionValueSchema = z.object({

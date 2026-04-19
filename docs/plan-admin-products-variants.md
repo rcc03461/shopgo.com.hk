@@ -11,7 +11,7 @@
 
 | 表名 | 說明 |
 |------|------|
-| `products` | 主商品：slug、title、description、`base_price`、`image_urls`（jsonb） |
+| `products` | 主商品：slug、title、description、`base_price`、封面 `cover_attachment_id`、圖庫見 `attachment_entity_links` |
 | `product_options` | 規格類型（如顏色、尺寸），`sort_order` |
 | `option_values` | 各類型下的可選值，`sort_order` |
 | `product_variants` | SKU：`sku_code`、`price`、`stock_quantity`、可選 `image_url` |

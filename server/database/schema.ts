@@ -1,8 +1,7 @@
-import { sql } from 'drizzle-orm'
 import {
+  bigint,
   index,
   integer,
-  jsonb,
   numeric,
   pgTable,
   text,
@@ -32,6 +31,65 @@ export const users = pgTable('users', {
     .notNull(),
 })
 
+/**
+ * 上傳／外部檔案紀錄（租戶隔離；`size` 供用量統計）
+ * `public_url` 與 `storage_key` 至少其一有值（由應用層驗證）
+ */
+export const attachments = pgTable(
+  'attachments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    type: varchar('type', { length: 32 }).notNull(),
+    mimetype: varchar('mimetype', { length: 128 }).notNull(),
+    filename: varchar('filename', { length: 255 }).notNull(),
+    extension: varchar('extension', { length: 32 }).notNull(),
+    size: bigint('size', { mode: 'number' }).notNull().default(0),
+    storageKey: text('storage_key'),
+    publicUrl: text('public_url'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('attachments_tenant_id_idx').on(t.tenantId),
+    index('attachments_tenant_deleted_idx').on(t.tenantId, t.deletedAt),
+  ],
+)
+
+/**
+ * 附件與實體的多型關聯（例：商品圖庫）
+ */
+export const attachmentEntityLinks = pgTable(
+  'attachment_entity_links',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    attachmentId: uuid('attachment_id')
+      .notNull()
+      .references(() => attachments.id, { onDelete: 'cascade' }),
+    entityType: varchar('entity_type', { length: 64 }).notNull(),
+    entityId: uuid('entity_id').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex('attachment_entity_links_entity_attachment_uidx').on(
+      t.entityType,
+      t.entityId,
+      t.attachmentId,
+    ),
+    index('attachment_entity_links_entity_idx').on(t.entityType, t.entityId),
+  ],
+)
+
 /** 租戶商品主檔（前台路由用 slug，後台用 id） */
 export const products = pgTable(
   'products',
@@ -46,10 +104,10 @@ export const products = pgTable(
     basePrice: numeric('base_price', { precision: 14, scale: 4 })
       .notNull()
       .default('0'),
-    imageUrls: jsonb('image_urls')
-      .$type<string[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
+    coverAttachmentId: uuid('cover_attachment_id').references(
+      () => attachments.id,
+      { onDelete: 'set null' },
+    ),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),

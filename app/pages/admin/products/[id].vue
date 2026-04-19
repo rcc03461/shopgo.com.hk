@@ -1,10 +1,25 @@
 <script setup lang="ts">
+import type { ProductMediaItem } from '~/types/productMedia'
+
 definePageMeta({
   layout: 'admin',
 })
 
 const route = useRoute()
 const id = computed(() => String(route.params.id))
+
+type AttachmentDto = {
+  id: string
+  type: string
+  mimetype: string
+  filename: string
+  extension: string
+  size: number
+  publicUrl: string | null
+  storageKey: string | null
+  createdAt: string
+  updatedAt: string
+}
 
 type Detail = {
   product: {
@@ -13,7 +28,9 @@ type Detail = {
     title: string
     description: string | null
     basePrice: string
-    imageUrls: string[]
+    coverAttachmentId: string | null
+    cover: AttachmentDto | null
+    galleryAttachments: AttachmentDto[]
     updatedAt: string
   }
   options: Array<{
@@ -47,8 +64,18 @@ const form = reactive({
   slug: '',
   description: '',
   basePrice: '0',
-  imageUrlsText: '',
 })
+
+const coverAttachmentId = ref<string | null>(null)
+const galleryItems = ref<ProductMediaItem[]>([])
+
+function toMediaItem(a: AttachmentDto): ProductMediaItem {
+  return {
+    id: a.id,
+    publicUrl: a.publicUrl,
+    filename: a.filename,
+  }
+}
 
 watch(
   () => data.value,
@@ -58,7 +85,8 @@ watch(
     form.slug = v.product.slug
     form.description = v.product.description ?? ''
     form.basePrice = v.product.basePrice
-    form.imageUrlsText = (v.product.imageUrls ?? []).join('\n')
+    coverAttachmentId.value = v.product.coverAttachmentId
+    galleryItems.value = v.product.galleryAttachments.map(toMediaItem)
   },
   { immediate: true },
 )
@@ -69,10 +97,6 @@ const saveErr = ref<string | null>(null)
 async function saveMain() {
   saving.value = true
   saveErr.value = null
-  const imageUrls = form.imageUrlsText
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean)
   try {
     await $fetch(`/api/admin/products/${id.value}`, {
       method: 'PATCH',
@@ -82,7 +106,8 @@ async function saveMain() {
         slug: form.slug,
         description: form.description || null,
         basePrice: form.basePrice,
-        imageUrls,
+        coverAttachmentId: coverAttachmentId.value,
+        galleryAttachmentIds: galleryItems.value.map((g) => g.id),
       },
     })
     await refresh()
@@ -142,6 +167,12 @@ function openCatalogDrawer() {
 async function onCatalogSaved() {
   await refresh()
 }
+
+const coverPreview = computed<ProductMediaItem | null>(() => {
+  const c = data.value?.product.cover
+  if (!c) return null
+  return toMediaItem(c)
+})
 </script>
 
 <template>
@@ -170,50 +201,28 @@ async function onCatalogSaved() {
           {{ saveErr }}
         </p>
 
-        <label class="block text-sm text-neutral-700">
-          <span class="font-medium">名稱</span>
-          <input
-            v-model="form.title"
-            required
-            class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-sm"
-          />
-        </label>
+        <AdminFormTextInput v-model="form.title" label="名稱" required />
 
-        <label class="block text-sm text-neutral-700">
-          <span class="font-medium">網址代號（slug）</span>
-          <input
-            v-model="form.slug"
-            required
-            class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-sm shadow-sm"
-          />
-        </label>
+        <AdminFormTextInput
+          v-model="form.slug"
+          label="網址代號（slug）"
+          required
+          input-class="font-mono"
+        />
 
-        <label class="block text-sm text-neutral-700">
-          <span class="font-medium">描述</span>
-          <textarea
-            v-model="form.description"
-            rows="4"
-            class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-sm"
-          />
-        </label>
+        <AdminFormTextarea v-model="form.description" label="描述" :rows="4" />
 
-        <label class="block text-sm text-neutral-700">
-          <span class="font-medium">基準價（NUMERIC 字串）</span>
-          <input
-            v-model="form.basePrice"
-            required
-            class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-sm shadow-sm"
-          />
-        </label>
+        <AdminFormPriceInput
+          v-model="form.basePrice"
+          label="基準價（NUMERIC 字串）"
+          required
+        />
 
-        <label class="block text-sm text-neutral-700">
-          <span class="font-medium">圖片 URL（每行一筆）</span>
-          <textarea
-            v-model="form.imageUrlsText"
-            rows="3"
-            class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-xs shadow-sm"
-          />
-        </label>
+        <AdminProductMediaFields
+          v-model:cover-attachment-id="coverAttachmentId"
+          v-model:gallery-items="galleryItems"
+          :cover-preview="coverPreview"
+        />
 
         <div class="flex flex-wrap gap-2 pt-2">
           <button

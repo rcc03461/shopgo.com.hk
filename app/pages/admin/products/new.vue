@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ProductMediaItem } from '~/types/productMedia'
+
 definePageMeta({
   layout: 'admin',
 })
@@ -8,8 +10,10 @@ const form = reactive({
   slug: '',
   description: '',
   basePrice: '0',
-  imageUrlsText: '',
 })
+
+const coverAttachmentId = ref<string | null>(null)
+const galleryItems = ref<ProductMediaItem[]>([])
 
 const saving = ref(false)
 const err = ref<string | null>(null)
@@ -17,10 +21,6 @@ const err = ref<string | null>(null)
 async function submit() {
   saving.value = true
   err.value = null
-  const imageUrls = form.imageUrlsText
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean)
   try {
     const res = await $fetch<{ product: { id: string } }>('/api/admin/products', {
       method: 'POST',
@@ -30,7 +30,8 @@ async function submit() {
         slug: form.slug,
         description: form.description || null,
         basePrice: form.basePrice,
-        imageUrls,
+        coverAttachmentId: coverAttachmentId.value,
+        galleryAttachmentIds: galleryItems.value.map((g) => g.id),
       },
     })
     await navigateTo(`/admin/products/${res.product.id}`)
@@ -55,52 +56,30 @@ async function submit() {
         {{ err }}
       </p>
 
-      <label class="block text-sm text-neutral-700">
-        <span class="font-medium">名稱</span>
-        <input
-          v-model="form.title"
-          required
-          class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-sm"
-        />
-      </label>
+      <AdminFormTextInput v-model="form.title" label="名稱" required />
 
-      <label class="block text-sm text-neutral-700">
-        <span class="font-medium">網址代號（slug）</span>
-        <input
-          v-model="form.slug"
-          required
-          pattern="[a-z0-9]+(-[a-z0-9]+)*"
-          title="小寫英數與連字號"
-          class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-sm shadow-sm"
-        />
-      </label>
+      <AdminFormTextInput
+        v-model="form.slug"
+        label="網址代號（slug）"
+        hint="小寫英數與連字號"
+        pattern="[a-z0-9]+(-[a-z0-9]+)*"
+        title="小寫英數與連字號"
+        required
+        input-class="font-mono"
+      />
 
-      <label class="block text-sm text-neutral-700">
-        <span class="font-medium">描述</span>
-        <textarea
-          v-model="form.description"
-          rows="4"
-          class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-sm"
-        />
-      </label>
+      <AdminFormTextarea v-model="form.description" label="描述" :rows="4" />
 
-      <label class="block text-sm text-neutral-700">
-        <span class="font-medium">基準價（NUMERIC 字串）</span>
-        <input
-          v-model="form.basePrice"
-          required
-          class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-sm shadow-sm"
-        />
-      </label>
+      <AdminFormPriceInput
+        v-model="form.basePrice"
+        label="基準價（NUMERIC 字串）"
+        required
+      />
 
-      <label class="block text-sm text-neutral-700">
-        <span class="font-medium">圖片 URL（每行一筆）</span>
-        <textarea
-          v-model="form.imageUrlsText"
-          rows="3"
-          class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-xs shadow-sm"
-        />
-      </label>
+      <AdminProductMediaFields
+        v-model:cover-attachment-id="coverAttachmentId"
+        v-model:gallery-items="galleryItems"
+      />
 
       <div class="flex gap-2 pt-2">
         <button

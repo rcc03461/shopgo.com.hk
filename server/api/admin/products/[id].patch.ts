@@ -4,6 +4,10 @@ import { z } from 'zod'
 import * as schema from '../../../database/schema'
 import { getDb } from '../../../utils/db'
 import { getPgSqlState, summarizeDbErrorForLog } from '../../../utils/dbErrors'
+import {
+  loadProductGalleryIds,
+  syncProductMedia,
+} from '../../../utils/productAttachmentSync'
 import { adminPatchProductBodySchema } from '../../../utils/productSchemas'
 import { requireTenantSession } from '../../../utils/requireTenantSession'
 
@@ -29,28 +33,92 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: '沒有要更新的欄位' })
   }
 
+  const wantsMedia =
+    'coverAttachmentId' in patch || 'galleryAttachmentIds' in patch
+
   const db = getDb(event)
 
-  const next: Partial<typeof schema.products.$inferInsert> = {
-    updatedAt: new Date(),
-  }
-  if (patch.title !== undefined) next.title = patch.title
-  if (patch.slug !== undefined) next.slug = patch.slug
-  if (patch.description !== undefined) next.description = patch.description
-  if (patch.basePrice !== undefined) next.basePrice = patch.basePrice
-  if (patch.imageUrls !== undefined) next.imageUrls = patch.imageUrls
-
   try {
-    const [updated] = await db
-      .update(schema.products)
-      .set(next)
-      .where(
-        and(
-          eq(schema.products.id, productId),
-          eq(schema.products.tenantId, session.tenantId),
-        ),
-      )
-      .returning()
+    const updated = await db.transaction(async (tx) => {
+      const [cur] = await tx
+        .select({
+          coverAttachmentId: schema.products.coverAttachmentId,
+        })
+        .from(schema.products)
+        .where(
+          and(
+            eq(schema.products.id, productId),
+            eq(schema.products.tenantId, session.tenantId),
+          ),
+        )
+        .limit(1)
+
+      if (!cur) {
+        throw createError({ statusCode: 404, message: '找不到商品' })
+      }
+
+      const curGallery = await loadProductGalleryIds(tx, productId)
+
+      const next: Partial<typeof schema.products.$inferInsert> = {
+        updatedAt: new Date(),
+      }
+      if (patch.title !== undefined) next.title = patch.title
+      if (patch.slug !== undefined) next.slug = patch.slug
+      if (patch.description !== undefined) next.description = patch.description
+      if (patch.basePrice !== undefined) next.basePrice = patch.basePrice
+
+      const hasTextField =
+        patch.title !== undefined ||
+        patch.slug !== undefined ||
+        patch.description !== undefined ||
+        patch.basePrice !== undefined
+
+      if (hasTextField || wantsMedia) {
+        const [row] = await tx
+          .update(schema.products)
+          .set(next)
+          .where(
+            and(
+              eq(schema.products.id, productId),
+              eq(schema.products.tenantId, session.tenantId),
+            ),
+          )
+          .returning()
+
+        if (!row) {
+          throw createError({ statusCode: 404, message: '找不到商品' })
+        }
+      }
+
+      if (wantsMedia) {
+        const cover =
+          'coverAttachmentId' in patch
+            ? (patch.coverAttachmentId ?? null)
+            : cur.coverAttachmentId
+        const gallery =
+          'galleryAttachmentIds' in patch
+            ? (patch.galleryAttachmentIds ?? [])
+            : curGallery
+
+        await syncProductMedia(tx, session.tenantId, productId, {
+          coverAttachmentId: cover,
+          galleryAttachmentIds: gallery,
+        })
+      }
+
+      const [finalRow] = await tx
+        .select()
+        .from(schema.products)
+        .where(
+          and(
+            eq(schema.products.id, productId),
+            eq(schema.products.tenantId, session.tenantId),
+          ),
+        )
+        .limit(1)
+
+      return finalRow
+    })
 
     if (!updated) {
       throw createError({ statusCode: 404, message: '找不到商品' })

@@ -37,6 +37,21 @@ const { data, pending, refresh, error } = await useAsyncData(
   { watch: [page, pageSize] },
 )
 
+const { data: attachmentStats } = await useAsyncData(
+  'admin-attachment-stats',
+  () =>
+    $fetch<{ totalBytes: number; totalCount: number }>(
+      '/api/admin/attachments/stats',
+      { credentials: 'include' },
+    ),
+)
+
+function formatBytes(n: number) {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`
+}
+
 function formatPrice(v: string) {
   return v
 }
@@ -148,6 +163,16 @@ function onSearchInput() {
         </tbody>
       </table>
     </div>
+
+    <p
+      v-if="attachmentStats"
+      class="mt-6 text-xs text-neutral-500"
+    >
+      租戶附件用量：{{ formatBytes(attachmentStats.totalBytes) }}（{{
+        attachmentStats.totalCount
+      }}
+      個檔案，未刪除）
+    </p>
 
     <div
       v-if="data && data.total > data.pageSize"

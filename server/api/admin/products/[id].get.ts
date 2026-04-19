@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import { createError } from 'h3'
 import { z } from 'zod'
 import * as schema from '../../../database/schema'
@@ -6,6 +6,21 @@ import { getDb } from '../../../utils/db'
 import { requireTenantSession } from '../../../utils/requireTenantSession'
 
 const uuidParam = z.string().uuid('商品 id 格式不正確')
+
+function serializeAttachment(row: typeof schema.attachments.$inferSelect) {
+  return {
+    id: row.id,
+    type: row.type,
+    mimetype: row.mimetype,
+    filename: row.filename,
+    extension: row.extension,
+    size: row.size,
+    publicUrl: row.publicUrl,
+    storageKey: row.storageKey,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }
+}
 
 export default defineEventHandler(async (event) => {
   const session = await requireTenantSession(event)
@@ -31,6 +46,45 @@ export default defineEventHandler(async (event) => {
   if (!product) {
     throw createError({ statusCode: 404, message: '找不到商品' })
   }
+
+  let cover: ReturnType<typeof serializeAttachment> | null = null
+  if (product.coverAttachmentId) {
+    const [c] = await db
+      .select()
+      .from(schema.attachments)
+      .where(
+        and(
+          eq(schema.attachments.id, product.coverAttachmentId),
+          eq(schema.attachments.tenantId, session.tenantId),
+          isNull(schema.attachments.deletedAt),
+        ),
+      )
+      .limit(1)
+    if (c) cover = serializeAttachment(c)
+  }
+
+  const galleryRows = await db
+    .select({ attachment: schema.attachments })
+    .from(schema.attachmentEntityLinks)
+    .innerJoin(
+      schema.attachments,
+      eq(schema.attachmentEntityLinks.attachmentId, schema.attachments.id),
+    )
+    .where(
+      and(
+        eq(schema.attachmentEntityLinks.entityType, 'product'),
+        eq(schema.attachmentEntityLinks.entityId, productId),
+        isNull(schema.attachments.deletedAt),
+      ),
+    )
+    .orderBy(
+      asc(schema.attachmentEntityLinks.sortOrder),
+      asc(schema.attachmentEntityLinks.id),
+    )
+
+  const galleryAttachments = galleryRows.map((r) =>
+    serializeAttachment(r.attachment),
+  )
 
   const options = await db
     .select()
@@ -120,8 +174,17 @@ export default defineEventHandler(async (event) => {
 
   return {
     product: {
-      ...product,
+      id: product.id,
+      tenantId: product.tenantId,
+      slug: product.slug,
+      title: product.title,
+      description: product.description,
       basePrice: String(product.basePrice),
+      coverAttachmentId: product.coverAttachmentId,
+      cover,
+      galleryAttachments,
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
     },
     options: optionsOut,
     variants: variantsOut,
