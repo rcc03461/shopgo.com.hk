@@ -21,6 +21,12 @@ export type StoreCartLineDto = {
   validationMessage?: string
 }
 
+function normalizeMoney(v: string | number | null | undefined): string {
+  const n = Number(v ?? 0)
+  if (!Number.isFinite(n)) return '0.0000'
+  return n.toFixed(4)
+}
+
 async function resolveStoreCustomerSession(
   event: H3Event,
   tenantId: string,
@@ -120,6 +126,7 @@ export async function getStoreCartLines(event: H3Event, cartId: string) {
             id: schema.products.id,
             slug: schema.products.slug,
             title: schema.products.title,
+            basePrice: schema.products.basePrice,
           })
           .from(schema.products)
           .where(inArray(schema.products.id, productIds))
@@ -133,6 +140,7 @@ export async function getStoreCartLines(event: H3Event, cartId: string) {
             id: schema.productVariants.id,
             productId: schema.productVariants.productId,
             skuCode: schema.productVariants.skuCode,
+            price: schema.productVariants.price,
             stockQuantity: schema.productVariants.stockQuantity,
           })
           .from(schema.productVariants)
@@ -147,8 +155,8 @@ export async function getStoreCartLines(event: H3Event, cartId: string) {
     )
   }
 
-  return rows.map((r): StoreCartLineDto => ({
-    ...(() => {
+  return await Promise.all(rows.map(async (r): Promise<StoreCartLineDto> => {
+    const validation = (() => {
       const product = productMap.get(r.productId)
       if (!product) {
         return {
@@ -179,15 +187,46 @@ export async function getStoreCartLines(event: H3Event, cartId: string) {
         }
       }
       return { isValid: true as const }
-    })(),
-    id: r.id,
-    productId: r.productId,
-    variantId: r.variantId,
-    productSlug: r.productSlug,
-    title: r.title,
-    unitPrice: r.unitPrice,
-    qty: r.qty,
-    ...(r.optionSummary ? { optionSummary: r.optionSummary } : {}),
+    })()
+
+    const product = productMap.get(r.productId)
+    const variant = r.variantId ? variantMap.get(r.variantId) : null
+    const nextTitle = product?.title ?? r.title
+    const nextSlug = product?.slug ?? r.productSlug
+    const nextPrice =
+      product == null
+        ? r.unitPrice
+        : variant
+          ? normalizeMoney(variant.price)
+          : normalizeMoney(product.basePrice)
+
+    if (
+      nextTitle !== r.title ||
+      nextSlug !== r.productSlug ||
+      normalizeMoney(r.unitPrice) !== normalizeMoney(nextPrice)
+    ) {
+      await db
+        .update(schema.shopCartLines)
+        .set({
+          titleSnapshot: nextTitle,
+          productSlugSnapshot: nextSlug,
+          unitPriceSnapshot: nextPrice,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.shopCartLines.id, r.id))
+    }
+
+    return {
+      ...validation,
+      id: r.id,
+      productId: r.productId,
+      variantId: r.variantId,
+      productSlug: nextSlug,
+      title: nextTitle,
+      unitPrice: nextPrice,
+      qty: r.qty,
+      ...(r.optionSummary ? { optionSummary: r.optionSummary } : {}),
+    }
   }))
 }
 
