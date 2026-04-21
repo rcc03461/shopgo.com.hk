@@ -66,6 +66,13 @@
 - [ ] 首頁 **模組化**（nav / banner / category / products / footer）與 `module_configs` 或等效設定
 - [ ] 子網域 **非 admin** 版面與主站視覺一致、極簡風 tokens 收斂
 
+## 主站 Landing（2026-04）
+
+- [x] Hero section：主標、副標、雙 CTA（`/admin/register`、`/admin/login`）
+- [x] Slider section：自動輪播 + 手動切換 + 指示點
+- [x] Categories products section：分類切換 + 商品卡片網格 + 空狀態
+- [ ] 接入真實商品/分類 API（目前使用 `app/data/landing.ts` 假資料）
+
 ---
 
 ## 工程與品質（Phase D 等）
