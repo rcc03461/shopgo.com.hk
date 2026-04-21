@@ -59,7 +59,7 @@ bun install
 bun run dev
 ```
 
-`dev` 指令已帶 `--host 0.0.0.0`，終端應同時出現 **Local** 與 **Network** 網址；若仍只顯示 `use --host to expose`，請確認已存檔並重啟 dev。
+`dev` 指令已帶 `--host 0.0.0.0`，並固定以 `--max-old-space-size=4096` 啟動 Nuxt / Nitro，避免在 Windows 開發環境出現 `Worker terminated due to reaching memory limit: JS heap out of memory`。終端應同時出現 **Local** 與 **Network** 網址；若仍只顯示 `use --host to expose`，請確認已存檔並重啟 dev。
 
 瀏覽器開啟：`http://oshop.com.hk:3000`（port 依終端機輸出為準；hosts 需已指向 `127.0.0.1`）。
 
@@ -72,6 +72,14 @@ bun run dev
 若仍被 Vite 擋 Host，已一併設定 `vite.server.allowedHosts` 包含 `oshop.com.hk` 與 `.oshop.com.hk`。
 
 （選用）仍可用 CLI 指定對外顯示的主機名：`bun run dev -- --host oshop.com.hk`。
+
+### 若仍出現 `JS heap out of memory`
+
+這通常代表目前機器上的 Node worker 可用 heap 仍不足，或先前的舊 `bun dev` / `nuxt dev` 行程還在跑。請先完全停止舊的 dev server，再重新執行 `bun run dev`。若你的專案之後變得更大，仍可臨時提高上限，例如：
+
+```bash
+node --max-old-space-size=6144 ./node_modules/nuxt/bin/nuxt.mjs dev --host 0.0.0.0
+```
 
 ### 環境變數
 

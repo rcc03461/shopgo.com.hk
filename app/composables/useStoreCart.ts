@@ -60,7 +60,7 @@ export function useStoreCart() {
     void syncFromServer()
   }
 
-  watch(tenantSlug, () => load(), { immediate: true })
+  watch(tenantSlug, () => load())
   watch(lines, persist, { deep: true })
   onMounted(() => load())
 
