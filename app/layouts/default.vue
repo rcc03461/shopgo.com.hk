@@ -3,6 +3,29 @@ const { user, refresh, logout } = useAuth()
 const { customer, refresh: refreshCustomer, logout: logoutCustomer } = useCustomerAuth()
 const tenantSlug = useState<string | null>('oshop-tenant-slug')
 const { totalQty } = useStoreCart()
+const requestFetch = useRequestFetch()
+
+type StoreNavItem = {
+  id: string
+  title: string
+  href: string
+  target: '_self' | '_blank'
+  children: StoreNavItem[]
+}
+
+const { data: storeNav } = await useAsyncData(
+  () => `store-navigation-${tenantSlug.value || 'platform'}`,
+  async () => {
+    if (!tenantSlug.value) return [] as StoreNavItem[]
+    try {
+      const res = await requestFetch<{ items: StoreNavItem[] }>('/api/store/navigation')
+      return res.items ?? []
+    } catch {
+      return [] as StoreNavItem[]
+    }
+  },
+  { watch: [tenantSlug] },
+)
 
 const adminEntry = computed(() =>
   user.value ? useTenantAdminEntryUrl(user.value.shopSlug) : '',
@@ -41,6 +64,16 @@ async function handleCustomerLogout() {
           >
             商品
           </NuxtLink>
+          <template v-for="item in storeNav ?? []" :key="item.id">
+            <a
+              :href="item.href"
+              :target="item.target"
+              :rel="item.target === '_blank' ? 'noopener noreferrer' : undefined"
+              class="rounded-md px-3 py-1.5 font-medium text-neutral-700 hover:bg-neutral-50"
+            >
+              {{ item.title }}
+            </a>
+          </template>
           <NuxtLink
             v-if="tenantSlug"
             to="/cart"

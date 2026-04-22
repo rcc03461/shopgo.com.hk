@@ -258,6 +258,38 @@ export const pages = pgTable(
   ],
 )
 
+/** 租戶導覽菜單（後台可拖拽排序與層級管理） */
+export const shopMenus = pgTable(
+  'shop_menus',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    title: varchar('title', { length: 255 }).notNull(),
+    parentId: uuid('parent_id').references((): AnyPgColumn => shopMenus.id, {
+      onDelete: 'set null',
+    }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    isVisible: boolean('is_visible').notNull().default(true),
+    linkType: varchar('link_type', { length: 16 }).notNull().default('custom'),
+    pageId: uuid('page_id').references(() => pages.id, { onDelete: 'set null' }),
+    customUrl: text('custom_url'),
+    target: varchar('target', { length: 16 }).notNull().default('_self'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    index('shop_menus_tenant_parent_sort_idx').on(t.tenantId, t.parentId, t.sortOrder),
+    index('shop_menus_tenant_visible_idx').on(t.tenantId, t.isVisible),
+    index('shop_menus_tenant_page_idx').on(t.tenantId, t.pageId),
+  ],
+)
+
 /** 商品與分類多對多（`sort_order` 為該商品上的分類排序） */
 export const productCategories = pgTable(
   'product_categories',
