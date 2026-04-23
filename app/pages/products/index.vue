@@ -116,7 +116,7 @@ const totalPages = computed(() => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+  <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6">
     <div v-if="!tenantSlug" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-6 text-sm text-amber-900">
       <p class="font-medium">目前網址不是商店子網域</p>
       <p class="mt-2 text-amber-800/90">

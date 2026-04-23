@@ -92,7 +92,7 @@ const tenantLandingProducts = computed(
 </script>
 
 <template>
-  <div v-if="tenantSlug" class="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+  <div v-if="tenantSlug" class="mx-auto max-w-5xl px-4 py-16 sm:px-6">
     <p class="text-xs font-medium uppercase tracking-widest text-neutral-500">
       租戶店舖
     </p>
