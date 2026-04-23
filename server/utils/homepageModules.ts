@@ -199,3 +199,37 @@ export async function publishDraftModules(
   )
 }
 
+export async function ensurePublishedModules(
+  db: ReturnType<typeof getDb>,
+  tenantId: string,
+) {
+  const published = await listHomepageModules(db, tenantId, 'published')
+  if (published.length) return published
+
+  const draft = await listHomepageModules(db, tenantId, 'draft')
+  const source = draft.length ? draft : defaultModules
+
+  await db
+    .delete(schema.tenantHomepageModules)
+    .where(
+      and(
+        eq(schema.tenantHomepageModules.tenantId, tenantId),
+        eq(schema.tenantHomepageModules.versionState, 'published'),
+      ),
+    )
+  await db.insert(schema.tenantHomepageModules).values(
+    source.map((item, idx) => ({
+      tenantId,
+      versionState: 'published',
+      moduleKey: item.moduleKey,
+      moduleType: item.moduleType,
+      sortOrder: idx,
+      isEnabled: item.isEnabled,
+      configJson: item.config as Record<string, unknown>,
+      updatedAt: new Date(),
+    })),
+  )
+
+  return await listHomepageModules(db, tenantId, 'published')
+}
+
