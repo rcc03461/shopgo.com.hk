@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { formatHkd } from '~/utils/formatHkd'
 
 definePageMeta({
   layout: 'default',
@@ -17,11 +16,6 @@ type ListItem = {
   hasVariants: boolean
   coverUrl: string | null
   updatedAt: string
-}
-
-function shouldShowOriginalPrice(originalPrice: string | null, displayPrice: string) {
-  if (!originalPrice) return false
-  return Number(originalPrice) > Number(displayPrice)
 }
 
 type ListResponse = {
@@ -219,44 +213,7 @@ const totalPages = computed(() => {
               class="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
             >
               <li v-for="item in listData.items" :key="item.id">
-                <NuxtLink
-                  :to="`/products/${item.slug}`"
-                  class="group flex h-full flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm transition hover:border-neutral-300 hover:shadow"
-                >
-                  <div class="aspect-[4/3] bg-neutral-100">
-                    <img
-                      v-if="item.coverUrl"
-                      :src="item.coverUrl"
-                      :alt="item.title"
-                      class="h-full w-full object-cover transition group-hover:opacity-95 object-center aspect-square"
-                      loading="lazy"
-                    >
-                    <div
-                      v-else
-                      class="flex h-full w-full items-center justify-center text-xs text-neutral-400"
-                    >
-                      無封面
-                    </div>
-                  </div>
-                  <div class="flex flex-1 flex-col gap-1 p-4">
-                    <h3 class="text-sm font-semibold text-neutral-900 group-hover:underline">
-                      {{ item.title }}
-                    </h3>
-                    <p class="font-mono text-xs text-neutral-500">
-                      /{{ item.slug }}
-                    </p>
-                    <p class="mt-auto pt-2 text-sm font-medium text-neutral-900">
-                      {{ formatHkd(item.displayPrice) }}
-                      <span v-if="item.hasVariants" class="text-xs font-normal text-neutral-500">起</span>
-                    </p>
-                    <p
-                      v-if="shouldShowOriginalPrice(item.originalPrice, item.displayPrice)"
-                      class="text-xs text-neutral-400 line-through"
-                    >
-                      {{ formatHkd(item.originalPrice!) }}
-                    </p>
-                  </div>
-                </NuxtLink>
+                <HomepageProductCard :product="item" />
               </li>
             </ul>
             <p v-else class="mt-10 text-sm text-neutral-600">

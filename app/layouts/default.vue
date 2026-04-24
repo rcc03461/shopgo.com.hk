@@ -14,9 +14,11 @@ type StoreNavItem = {
 }
 
 type StoreHomepageModule = {
-  moduleType: string
+  moduleType?: string
+  component?: string
   isEnabled: boolean
-  config: Record<string, unknown>
+  config?: Record<string, unknown>
+  props?: Record<string, unknown>
 }
 
 const { data: storeNav } = await useAsyncData(
@@ -38,8 +40,10 @@ const { data: storeHomepageModules } = await useAsyncData(
   async () => {
     if (!tenantSlug.value) return [] as StoreHomepageModule[]
     try {
-      const res = await requestFetch<{ items: StoreHomepageModule[] }>('/api/store/homepage/modules')
-      return res.items ?? []
+      const res = await requestFetch<{ items?: StoreHomepageModule[]; dynamicItems?: StoreHomepageModule[] }>(
+        '/api/store/homepage/modules',
+      )
+      return (res.dynamicItems?.length ? res.dynamicItems : res.items) ?? []
     } catch {
       return [] as StoreHomepageModule[]
     }
@@ -49,9 +53,14 @@ const { data: storeHomepageModules } = await useAsyncData(
 
 const showTopNav = computed(() => {
   if (!tenantSlug.value) return true
-  const navModule = (storeHomepageModules.value ?? []).find((item) => item.moduleType === 'nav')
+  const navModule = (storeHomepageModules.value ?? []).find(
+    (item) => item.moduleType === 'nav' || item.component === 'nav1',
+  )
   if (!navModule || !navModule.isEnabled) return false
-  return (navModule.config.show as boolean | undefined) !== false
+  const configShow =
+    ((navModule.config as { show?: boolean } | undefined)?.show ??
+      (navModule.props as { show?: boolean } | undefined)?.show)
+  return configShow !== false
 })
 
 const { data: tenantInfo } = await useAsyncData(

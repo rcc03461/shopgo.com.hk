@@ -1,4 +1,5 @@
 import { getDb } from '../../../utils/db'
+import { legacyToDynamicModules } from '../../../utils/homepageDynamic'
 import { ensurePublishedModules } from '../../../utils/homepageModules'
 import { requireStoreTenant } from '../../../utils/storeTenant'
 
@@ -10,5 +11,6 @@ export default defineEventHandler(async (event) => {
   return {
     version: 'published' as const,
     items,
+    dynamicItems: legacyToDynamicModules(items),
   }
 })

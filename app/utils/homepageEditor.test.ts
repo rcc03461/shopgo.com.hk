@@ -1,0 +1,307 @@
+// @ts-ignore Bun test types are not configured in this repository yet.
+import { describe, expect, test } from 'bun:test'
+import type { HomepageModule } from '../types/homepage'
+import {
+  addCategoryToModule,
+  addProductToModule,
+  ensureDynamicModuleProps,
+  ensureModuleConfig,
+  moveHomepageModule,
+  toDynamicHomepageModule,
+  updateModuleConfigFromJson,
+} from './homepageEditor'
+import { resolveProductSliderProducts } from './homepageModuleResolvers'
+
+function createModule<T extends HomepageModule['moduleType']>(
+  moduleType: T,
+  config: HomepageModule<T>['config'],
+): HomepageModule<T> {
+  return {
+    moduleKey: `${moduleType}-module`,
+    moduleType,
+    sortOrder: 0,
+    isEnabled: true,
+    config,
+  }
+}
+
+describe('moveHomepageModule', () => {
+  test('重新排序后会同步更新 sortOrder', () => {
+    const items: HomepageModule[] = [
+      createModule('nav', { show: true }),
+      createModule('banner', {
+        hero: {
+          badge: 'badge',
+          title: 'title',
+          subtitle: 'subtitle',
+          primaryCta: { label: 'buy', to: '/' },
+          secondaryCta: { label: 'more', to: '/more' },
+        },
+      }),
+      createModule('footer', { text: 'footer' }),
+    ]
+
+    const moved = moveHomepageModule(items, 0, 1)
+
+    expect(moved.map((item) => item.moduleType)).toEqual(['banner', 'nav', 'footer'])
+    expect(moved.map((item) => item.sortOrder)).toEqual([0, 1, 2])
+  })
+
+  test('超出边界时保持原顺序，仅重新整理 sortOrder', () => {
+    const items: HomepageModule[] = [
+      { ...createModule('nav', { show: true }), sortOrder: 3 },
+      { ...createModule('footer', { text: 'footer' }), sortOrder: 8 },
+    ]
+
+    const moved = moveHomepageModule(items, 0, -1)
+
+    expect(moved.map((item) => item.moduleType)).toEqual(['nav', 'footer'])
+    expect(moved.map((item) => item.sortOrder)).toEqual([0, 1])
+  })
+})
+
+describe('ensureModuleConfig', () => {
+  test('会为各类模组补齐默认配置', () => {
+    const navModule = createModule('nav', {} as HomepageModule<'nav'>['config'])
+    const bannerModule = createModule('banner', {} as HomepageModule<'banner'>['config'])
+    const categoryModule = createModule('category', {} as HomepageModule<'category'>['config'])
+    const productsModule = createModule('products', {} as HomepageModule<'products'>['config'])
+    const footerModule = createModule('footer', {} as HomepageModule<'footer'>['config'])
+
+    expect(ensureModuleConfig(navModule)).toEqual({ show: true })
+    expect(ensureModuleConfig(bannerModule)).toEqual({
+      hero: {
+        badge: '多租戶線上商店',
+        title: '',
+        subtitle: '',
+        primaryCta: { label: '', to: '/' },
+        secondaryCta: { label: '', to: '/' },
+      },
+    })
+    expect(ensureModuleConfig(categoryModule)).toEqual({
+      title: '',
+      categories: [],
+    })
+    expect(ensureModuleConfig(productsModule)).toEqual({
+      title: '',
+      categories: [],
+      products: [],
+      source: {
+        type: 'manual',
+        productIds: [],
+        sort: 'manual',
+      },
+      ui: {
+        perView: 4,
+        autoplay: false,
+        intervalMs: 4000,
+        loop: false,
+      },
+    })
+    expect(ensureModuleConfig(footerModule)).toEqual({ text: '' })
+  })
+})
+
+describe('module list mutations', () => {
+  test('为分类模组新增分类', () => {
+    const module = createModule('category', { title: '', categories: [] })
+
+    addCategoryToModule(module, () => 'cat-fixed')
+
+    expect(module.config.categories).toEqual([{ id: 'cat-fixed', label: '新分類' }])
+  })
+
+  test('为商品模组新增商品时会自动建立预设分类', () => {
+    const module = createModule('products', { title: '', categories: [], products: [] })
+    let counter = 0
+    const nextId = () => `id-${++counter}`
+
+    addProductToModule(module, nextId)
+
+    expect(module.config.categories).toEqual([{ id: 'id-1', label: '預設分類' }])
+    expect(module.config.products).toEqual([
+      {
+        id: 'id-2',
+        categoryId: 'id-1',
+        name: '新商品',
+        slug: 'new-product',
+        priceLabel: 'HK$0',
+        imageUrl:
+          'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80',
+      },
+    ])
+    expect(module.config.source).toEqual({
+      type: 'manual',
+      productIds: ['id-2'],
+      sort: 'manual',
+    })
+  })
+})
+
+describe('updateModuleConfigFromJson', () => {
+  test('合法但不完整的 Banner JSON 会被补齐默认值', () => {
+    const module = createModule('banner', {
+      hero: {
+        badge: 'old',
+        title: 'old',
+        subtitle: 'old',
+        primaryCta: { label: 'old', to: '/old' },
+        secondaryCta: { label: 'old', to: '/old' },
+      },
+    })
+
+    const error = updateModuleConfigFromJson(module, '{"hero":{"title":"新主標題"}}')
+
+    expect(error).toBeNull()
+    expect(module.config).toEqual({
+      hero: {
+        badge: '多租戶線上商店',
+        title: '新主標題',
+        subtitle: '',
+        primaryCta: { label: '', to: '/' },
+        secondaryCta: { label: '', to: '/' },
+      },
+    })
+  })
+
+  test('JSON 非法时返回错误讯息', () => {
+    const module = createModule('footer', { text: '' })
+
+    const error = updateModuleConfigFromJson(module, '{bad json}')
+
+    expect(error).toBe('模組 footer-module JSON 格式錯誤')
+    expect(module.config).toEqual({ text: '' })
+  })
+})
+
+describe('dynamic module conversion', () => {
+  test('products module 會轉成 product_slider1 並補齊預設 source/ui', () => {
+    const legacyProducts = createModule('products', {
+      title: '精選商品',
+      categories: [{ id: 'c1', label: '分類1' }],
+      products: [
+        {
+          id: 'p1',
+          categoryId: 'c1',
+          name: '商品1',
+          slug: 'p1',
+          priceLabel: 'HK$10',
+          imageUrl: 'https://example.com/1.jpg',
+        },
+      ],
+    })
+
+    const dynamic = toDynamicHomepageModule(legacyProducts)
+
+    expect(dynamic.component).toBe('product_slider1')
+    expect(dynamic.props).toEqual({
+      title: '精選商品',
+      source: {
+        type: 'manual',
+        productIds: ['p1'],
+        sort: 'manual',
+      },
+      ui: {
+        perView: 4,
+        autoplay: false,
+        intervalMs: 4000,
+        loop: false,
+      },
+    })
+  })
+
+  test('dynamic props 缺漏時會由 ensureDynamicModuleProps 補齊', () => {
+    const module = {
+      uid: 'm1',
+      component: 'product_slider1' as const,
+      sortOrder: 0,
+      isEnabled: true,
+      props: {
+        source: {
+          type: 'category',
+          categoryId: 'c1',
+        },
+      },
+    } as any
+
+    const props = ensureDynamicModuleProps(module)
+
+    expect(props).toEqual({
+      title: '',
+      source: {
+        type: 'category',
+        categoryId: 'c1',
+        limit: 8,
+        sort: 'newest',
+      },
+      ui: {
+        perView: 4,
+        autoplay: false,
+        intervalMs: 4000,
+        loop: false,
+      },
+    })
+  })
+
+  test('遇到不可 clone 的值時不應拋錯', () => {
+    const legacyBanner = createModule('banner', {
+      hero: {
+        badge: 'x',
+        title: 'y',
+        subtitle: 'z',
+        primaryCta: { label: 'go', to: '/' },
+        secondaryCta: { label: 'more', to: '/more' },
+      },
+      onClick: () => {},
+    } as any)
+
+    const dynamic = toDynamicHomepageModule(legacyBanner)
+    expect(dynamic.component).toBe('hero3')
+    expect((dynamic.props as any).hero.title).toBe('y')
+  })
+})
+
+describe('product slider resolver', () => {
+  const products = [
+    {
+      id: 'p1',
+      categoryId: 'c1',
+      name: 'A',
+      slug: 'a',
+      priceLabel: 'HK$20',
+      imageUrl: 'a.jpg',
+    },
+    {
+      id: 'p2',
+      categoryId: 'c1',
+      name: 'B',
+      slug: 'b',
+      priceLabel: 'HK$10',
+      imageUrl: 'b.jpg',
+    },
+  ]
+
+  test('manual 會依 productIds 順序回傳', () => {
+    const result = resolveProductSliderProducts(
+      {
+        title: 'x',
+        source: { type: 'manual', productIds: ['p2', 'p1'], sort: 'manual' },
+        ui: { perView: 4, autoplay: false, intervalMs: 4000, loop: false },
+      },
+      { categories: [], products },
+    )
+    expect(result.map((item) => item.id)).toEqual(['p2', 'p1'])
+  })
+
+  test('category 可依價格排序並限制數量', () => {
+    const result = resolveProductSliderProducts(
+      {
+        title: 'x',
+        source: { type: 'category', categoryId: 'c1', limit: 1, sort: 'price_asc' },
+        ui: { perView: 4, autoplay: false, intervalMs: 4000, loop: false },
+      },
+      { categories: [], products },
+    )
+    expect(result.map((item) => item.id)).toEqual(['p2'])
+  })
+})

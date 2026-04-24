@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, inArray, or } from 'drizzle-orm'
+import { and, asc, count, desc, eq, ilike, inArray, isNull, or } from 'drizzle-orm'
 import * as schema from '../../../database/schema'
 import { getDb } from '../../../utils/db'
 import { requireTenantSession } from '../../../utils/requireTenantSession'
@@ -45,6 +45,7 @@ export default defineEventHandler(async (event) => {
       title: schema.products.title,
       basePrice: schema.products.basePrice,
       originalPrice: schema.products.originalPrice,
+      coverAttachmentId: schema.products.coverAttachmentId,
       updatedAt: schema.products.updatedAt,
     })
     .from(schema.products)
@@ -70,10 +71,12 @@ export default defineEventHandler(async (event) => {
   }
 
   const categoryNamesByProduct = new Map<string, string[]>()
+  const categoryIdsByProduct = new Map<string, string[]>()
   if (ids.length > 0) {
     const catRows = await db
       .select({
         productId: schema.productCategories.productId,
+        categoryId: schema.productCategories.categoryId,
         name: schema.categories.name,
       })
       .from(schema.productCategories)
@@ -90,6 +93,37 @@ export default defineEventHandler(async (event) => {
       const list = categoryNamesByProduct.get(r.productId) ?? []
       list.push(r.name)
       categoryNamesByProduct.set(r.productId, list)
+
+      const idsList = categoryIdsByProduct.get(r.productId) ?? []
+      idsList.push(r.categoryId)
+      categoryIdsByProduct.set(r.productId, idsList)
+    }
+  }
+
+  const coverIds = [
+    ...new Set(
+      rows
+        .map((r) => r.coverAttachmentId)
+        .filter((x): x is string => typeof x === 'string' && x.length > 0),
+    ),
+  ]
+  const coverUrlById = new Map<string, string | null>()
+  if (coverIds.length > 0) {
+    const covers = await db
+      .select({
+        id: schema.attachments.id,
+        publicUrl: schema.attachments.publicUrl,
+      })
+      .from(schema.attachments)
+      .where(
+        and(
+          eq(schema.attachments.tenantId, tenantId),
+          inArray(schema.attachments.id, coverIds),
+          isNull(schema.attachments.deletedAt),
+        ),
+      )
+    for (const cover of covers) {
+      coverUrlById.set(cover.id, cover.publicUrl)
     }
   }
 
@@ -107,7 +141,9 @@ export default defineEventHandler(async (event) => {
         ...r,
         basePrice: String(r.basePrice),
         originalPrice: r.originalPrice ? String(r.originalPrice) : null,
+        coverUrl: r.coverAttachmentId ? (coverUrlById.get(r.coverAttachmentId) ?? null) : null,
         variantCount: variantCountMap.get(r.id) ?? 0,
+        categoryIds: categoryIdsByProduct.get(r.id) ?? [],
         categoryCount: catNames.length,
         categorySummary: formatCategorySummary(catNames),
       }

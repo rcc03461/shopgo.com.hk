@@ -1,4 +1,5 @@
 import { getDb } from '../../../utils/db'
+import { legacyToDynamicModules } from '../../../utils/homepageDynamic'
 import { ensureDraftModules, listHomepageModules } from '../../../utils/homepageModules'
 import { requireTenantSession } from '../../../utils/requireTenantSession'
 
@@ -12,6 +13,7 @@ export default defineEventHandler(async (event) => {
   return {
     version: 'draft' as const,
     items,
+    dynamicItems: legacyToDynamicModules(items),
     hasPublished: published.length > 0,
     draftUpdatedAt,
   }

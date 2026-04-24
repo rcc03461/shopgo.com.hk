@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { landingHero, landingSlides } from '~/data/landing'
 import type { LandingCategory, LandingProductCard } from '~/types/landing'
-import type { HomepageModule } from '~/types/homepage'
+import type { HomepageDynamicModule, HomepageModule } from '~/types/homepage'
+import { resolveDynamicHomepageModules } from '~/utils/homepageModuleResolvers'
+import { toDynamicHomepageModule } from '~/utils/homepageEditor'
 
 definePageMeta({
   layout: 'default',
@@ -27,9 +29,9 @@ const {
 
     const fetchApi = import.meta.server ? requestFetch : $fetch
 
-    const categoryRes = await fetchApi<{ categories: Array<{ id: string; name: string }> }>(
-      '/api/store/categories',
-    )
+    const categoryRes = await (fetchApi as any)('/api/store/categories') as {
+      categories: Array<{ id: string; name: string }>
+    }
 
     const categories: LandingCategory[] = categoryRes.categories.map((category) => ({
       id: category.id,
@@ -38,7 +40,13 @@ const {
 
     const productResponses = await Promise.allSettled(
       categories.map(async (category) => {
-        const res = await fetchApi<{
+        const res = await (fetchApi as any)('/api/store/products', {
+          query: {
+            categoryId: category.id,
+            page: 1,
+            pageSize: 4,
+          },
+        }) as {
           items: Array<{
             id: string
             slug: string
@@ -46,13 +54,7 @@ const {
             displayPrice: string
             coverUrl: string | null
           }>
-        }>('/api/store/products', {
-          query: {
-            categoryId: category.id,
-            page: 1,
-            pageSize: 4,
-          },
-        })
+        }
 
         return res.items.map(
           (item): LandingProductCard => ({
@@ -90,16 +92,25 @@ const {
 } = await useAsyncData(
   'tenant-homepage-modules',
   async () => {
-    if (!tenantSlug.value) return [] as HomepageModule[]
+    if (!tenantSlug.value) {
+      return {
+        items: [] as HomepageModule[],
+        dynamicItems: [] as HomepageDynamicModule[],
+      }
+    }
     const fetchApi = import.meta.server ? requestFetch : $fetch
     try {
-      const res = await (fetchApi as (url: string) => Promise<{ items: HomepageModule[] }>)(
-        '/api/store/homepage/modules',
-      )
-      return res.items ?? []
+      const res = await (fetchApi as any)('/api/store/homepage/modules')
+      return {
+        items: (res?.items ?? []) as HomepageModule[],
+        dynamicItems: (res?.dynamicItems ?? []) as HomepageDynamicModule[],
+      }
     } catch {
       // 尚未發佈首頁模組時，回退到既有首頁區塊，避免整頁錯誤。
-      return [] as HomepageModule[]
+      return {
+        items: [] as HomepageModule[],
+        dynamicItems: [] as HomepageDynamicModule[],
+      }
     }
   },
 )
@@ -113,8 +124,16 @@ const tenantLandingProducts = computed(
 )
 
 const enabledHomepageModules = computed(() =>
-  (tenantHomepageModulesData.value ?? [])
-    .filter((item) => item.isEnabled && item.moduleType !== 'nav')
+  resolveDynamicHomepageModules(
+    (tenantHomepageModulesData.value?.dynamicItems?.length
+      ? tenantHomepageModulesData.value.dynamicItems
+      : (tenantHomepageModulesData.value?.items ?? []).map((item) => toDynamicHomepageModule(item))),
+    {
+      categories: tenantLandingCategories.value,
+      products: tenantLandingProducts.value,
+    },
+  )
+    .filter((item) => item.isEnabled && item.component !== 'nav1')
     .sort((a, b) => a.sortOrder - b.sortOrder),
 )
 </script>
@@ -177,7 +196,7 @@ const enabledHomepageModules = computed(() =>
     <template v-else-if="enabledHomepageModules.length">
       <HomepageModuleRenderer
         v-for="module in enabledHomepageModules"
-        :key="module.moduleKey"
+        :key="module.uid"
         :module="module"
       />
     </template>
