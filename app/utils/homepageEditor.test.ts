@@ -8,6 +8,7 @@ import {
   ensureModuleConfig,
   moveHomepageModule,
   toDynamicHomepageModule,
+  toDynamicHomepageModules,
   updateModuleConfigFromJson,
 } from './homepageEditor'
 import { resolveProductSliderProducts } from './homepageModuleResolvers'
@@ -212,6 +213,31 @@ describe('dynamic module conversion', () => {
         loop: true,
       },
     })
+  })
+
+  test('批次轉換時會依 sortOrder 排列，避免後台與首頁展示順序不同', () => {
+    const modules: HomepageModule[] = [
+      { ...createModule('footer', { text: 'footer' }), moduleKey: 'footer', sortOrder: 2 },
+      {
+        ...createModule('banner', {
+          hero: {
+            badge: 'badge',
+            title: 'title',
+            subtitle: 'subtitle',
+            primaryCta: { label: 'buy', to: '/' },
+            secondaryCta: { label: 'more', to: '/more' },
+          },
+        }),
+        moduleKey: 'banner',
+        sortOrder: 0,
+      },
+      { ...createModule('category', { title: 'categories', categories: [] }), moduleKey: 'category', sortOrder: 1 },
+    ]
+
+    const dynamic = toDynamicHomepageModules(modules)
+
+    expect(dynamic.map((item) => item.uid)).toEqual(['banner', 'category', 'footer'])
+    expect(dynamic.map((item) => item.sortOrder)).toEqual([0, 1, 2])
   })
 
   test('products module 會轉成 product_slider1 並補齊預設 source/ui', () => {

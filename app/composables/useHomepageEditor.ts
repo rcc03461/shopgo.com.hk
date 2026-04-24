@@ -1,9 +1,11 @@
+import { clearNuxtData } from '#app'
 import type { HomepageDynamicModule, HomepageModule, HomepageModuleComponentKey } from '../types/homepage'
 import {
   addCategoryToDynamicModule,
   addProductToDynamicModule,
   moveDynamicHomepageModule,
   normalizeDynamicHomepageModuleOrder,
+  orderHomepageModulesBySortOrder,
   removeCategoryFromDynamicModule,
   removeProductFromDynamicModule,
   toDynamicHomepageModules,
@@ -28,6 +30,7 @@ type AdminProductOption = {
 }
 
 export function useHomepageEditor() {
+  const tenantSlug = useState<string | null>('oshop-tenant-slug')
   const requestFetch = useRequestFetch()
   const saving = ref(false)
   const publishing = ref(false)
@@ -76,7 +79,9 @@ export function useHomepageEditor() {
     (payload) => {
       const items = payload?.dynamicItems
       if (items?.length) {
-        draftDynamicItems.value = normalizeDynamicHomepageModuleOrder(structuredClone(items))
+        draftDynamicItems.value = normalizeDynamicHomepageModuleOrder(
+          orderHomepageModulesBySortOrder(structuredClone(items)),
+        )
       } else {
         draftItems.value = structuredClone(payload?.items ?? [])
         draftDynamicItems.value = toDynamicHomepageModules(draftItems.value)
@@ -255,6 +260,11 @@ export function useHomepageEditor() {
         credentials: 'include',
       })
       await refresh()
+      // 發佈後清除店舖首頁 useAsyncData 快取，避免 SPA 導航仍顯示舊模組順序
+      if (import.meta.client && tenantSlug.value) {
+        await clearNuxtData(`tenant-homepage-modules-${tenantSlug.value}`)
+        await clearNuxtData(`store-homepage-modules-nav-${tenantSlug.value}`)
+      }
     } catch (e: unknown) {
       const err = e as { data?: { message?: string }; message?: string }
       saveError.value = err?.data?.message || err?.message || '發佈失敗'

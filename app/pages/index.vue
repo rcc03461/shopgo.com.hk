@@ -18,7 +18,7 @@ const {
   error: tenantLandingError,
   refresh: refreshTenantLanding,
 } = await useAsyncData(
-  'tenant-landing-categories-products',
+  () => `tenant-landing-categories-products-${tenantSlug.value ?? ''}`,
   async () => {
     if (!tenantSlug.value) {
       return {
@@ -83,6 +83,7 @@ const {
         .flatMap((result) => result.value),
     }
   },
+  { watch: [tenantSlug] },
 )
 
 const {
@@ -90,7 +91,7 @@ const {
   pending: tenantHomepageModulesPending,
   refresh: refreshTenantHomepageModules,
 } = await useAsyncData(
-  'tenant-homepage-modules',
+  () => `tenant-homepage-modules-${tenantSlug.value ?? ''}`,
   async () => {
     if (!tenantSlug.value) {
       return {
@@ -113,6 +114,7 @@ const {
       }
     }
   },
+  { watch: [tenantSlug] },
 )
 
 const tenantLandingCategories = computed(

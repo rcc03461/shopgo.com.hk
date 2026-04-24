@@ -49,7 +49,7 @@ const categoryConfigSchema = z.object({
       id: z.string().trim().min(1).max(80),
       label: z.string().trim().min(1).max(60),
     }),
-  ).max(12),
+  ).max(12).default([]),
 })
 
 const imageSliderConfigSchema = z.object({
@@ -61,7 +61,7 @@ const imageSliderConfigSchema = z.object({
       alt: z.string().trim().max(200).optional(),
       linkUrl: z.string().trim().max(255).optional(),
     }),
-  ).max(20),
+  ).max(20).default([]),
   ui: z.object({
     autoplay: z.boolean(),
     intervalMs: z.number().int().min(1000).max(120000),
@@ -69,14 +69,15 @@ const imageSliderConfigSchema = z.object({
   }),
 })
 
+/** 與動態編輯器儲存格式相容：可僅含 title + source + ui，categories/products 由預設補齊 */
 const productsConfigSchema = z.object({
-  title: z.string().trim().min(1).max(120),
+  title: z.string().trim().min(0).max(120),
   categories: z.array(
     z.object({
       id: z.string().trim().min(1).max(80),
       label: z.string().trim().min(1).max(60),
     }),
-  ).max(12),
+  ).max(12).default([]),
   products: z.array(
     z.object({
       id: z.string().trim().min(1).max(80),
@@ -84,9 +85,9 @@ const productsConfigSchema = z.object({
       name: z.string().trim().min(1).max(120),
       slug: z.string().trim().min(1).max(255),
       priceLabel: z.string().trim().min(1).max(40),
-          imageUrl: publicAssetUrlSchema,
+      imageUrl: publicAssetUrlSchema,
     }),
-  ).max(60),
+  ).max(60).default([]),
 })
 
 const footerConfigSchema = z.object({

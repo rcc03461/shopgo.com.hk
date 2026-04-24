@@ -68,6 +68,10 @@ export function normalizeHomepageModuleOrder(items: HomepageModule[]) {
   return items.map((module, index) => ({ ...module, sortOrder: index }))
 }
 
+export function orderHomepageModulesBySortOrder<T extends { sortOrder: number }>(items: T[]) {
+  return [...items].sort((a, b) => a.sortOrder - b.sortOrder)
+}
+
 export function moveHomepageModule(items: HomepageModule[], index: number, delta: number) {
   const target = index + delta
   if (target < 0 || target >= items.length) return normalizeHomepageModuleOrder(items)
@@ -387,7 +391,7 @@ export function toDynamicHomepageModule(module: HomepageModule): HomepageDynamic
 }
 
 export function toDynamicHomepageModules(items: HomepageModule[]) {
-  return normalizeHomepageModuleOrder(items).map((item) => toDynamicHomepageModule(item))
+  return normalizeHomepageModuleOrder(orderHomepageModulesBySortOrder(items)).map((item) => toDynamicHomepageModule(item))
 }
 
 export function normalizeDynamicHomepageModuleOrder(items: HomepageDynamicModule[]) {

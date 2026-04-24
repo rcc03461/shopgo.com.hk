@@ -18,8 +18,12 @@ const moduleTypeToComponent: Record<HomepageModule['moduleType'], HomepageModule
   footer: 'footer1',
 }
 
+function orderBySortOrder<T extends { sortOrder: number }>(items: T[]) {
+  return [...items].sort((a, b) => a.sortOrder - b.sortOrder)
+}
+
 export function dynamicToLegacyModules(items: HomepageDynamicModule[]): HomepageModule[] {
-  return items.map((item, index) => {
+  return orderBySortOrder(items).map((item, index) => {
     const moduleType = componentToModuleType[item.component]
     const moduleKey = item.moduleKey ?? item.uid
 
@@ -32,6 +36,8 @@ export function dynamicToLegacyModules(items: HomepageDynamicModule[]): Homepage
         isEnabled: item.isEnabled,
         config: {
           title: (props.title as string | undefined) ?? '',
+          categories: Array.isArray(props.categories) ? props.categories : [],
+          products: Array.isArray(props.products) ? props.products : [],
           source: props.source ?? { type: 'manual', productIds: [], sort: 'manual' },
           ui: props.ui ?? { perView: 4, autoplay: false, intervalMs: 4000, loop: false },
         },
@@ -49,7 +55,7 @@ export function dynamicToLegacyModules(items: HomepageDynamicModule[]): Homepage
 }
 
 export function legacyToDynamicModules(items: HomepageModule[]): HomepageDynamicModule[] {
-  return items.map((item, index) => {
+  return orderBySortOrder(items).map((item, index) => {
     const component = moduleTypeToComponent[item.moduleType]
     if (component === 'product_slider1') {
       const productsConfig = item.config as Record<string, unknown>
