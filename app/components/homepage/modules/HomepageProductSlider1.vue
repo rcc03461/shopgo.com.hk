@@ -107,9 +107,14 @@ onBeforeUnmount(() => {
         :key="product.id"
         :product="{
           slug: product.slug,
+          title: product.title,
           name: product.name,
+          coverUrl: product.coverUrl,
           imageUrl: product.imageUrl,
+          displayPrice: product.displayPrice,
           priceLabel: product.priceLabel,
+          originalPrice: product.originalPrice,
+          hasVariants: product.hasVariants,
         }"
       />
       <p v-if="!displayProducts.length" class="text-sm text-neutral-500">尚未設定商品。</p>

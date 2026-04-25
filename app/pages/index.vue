@@ -4,6 +4,7 @@ import type { LandingCategory, LandingProductCard } from '~/types/landing'
 import type { HomepageDynamicModule, HomepageModule, HomepageProductSliderProps } from '~/types/homepage'
 import { collectHomepageProductCategoryIds, resolveDynamicHomepageModules } from '~/utils/homepageModuleResolvers'
 import { toDynamicHomepageModule } from '~/utils/homepageEditor'
+import { formatHkd } from '~/utils/formatHkd'
 
 definePageMeta({
   layout: 'default',
@@ -106,6 +107,8 @@ const {
             slug: string
             title: string
             displayPrice: string
+            originalPrice: string | null
+            hasVariants: boolean
             coverUrl: string | null
           }>
         }
@@ -115,8 +118,13 @@ const {
             id: item.id,
             categoryId: category.id,
             name: item.title,
+            title: item.title,
             slug: item.slug,
-            priceLabel: `HK$${item.displayPrice}`,
+            priceLabel: formatHkd(item.displayPrice),
+            displayPrice: item.displayPrice,
+            originalPrice: item.originalPrice,
+            hasVariants: item.hasVariants,
+            coverUrl: item.coverUrl,
             imageUrl:
               item.coverUrl ??
               'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=800&q=80',

@@ -28,7 +28,12 @@ export type LandingProductCard = {
   id: string
   categoryId: string
   name: string
+  title?: string
   slug: string
   priceLabel: string
   imageUrl: string
+  coverUrl?: string | null
+  displayPrice?: string
+  originalPrice?: string | null
+  hasVariants?: boolean
 }
