@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: hxm-oshop-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-oshop}
+      POSTGRES_USER: ${POSTGRES_USER:-oshop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      TZ: ${TZ:-Asia/Hong_Kong}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-oshop} -d ${POSTGRES_DB:-oshop}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hxm-oshop-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      DB_SSLMODE: disable
+      db_host: db
+      db_port: 5432
+      db_user: ${POSTGRES_USER:-oshop}
+      db_password: ${POSTGRES_PASSWORD:-change-me}
+      db_name: ${POSTGRES_DB:-oshop}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-oshop}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-oshop}?sslmode=disable
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pg_data:
