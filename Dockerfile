@@ -3,11 +3,12 @@ WORKDIR /app
 
 # 先安裝依賴以提升快取命中率
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+# 你的 VPS 在 bun install 會於 esbuild postinstall 失敗，改用 npm 安裝可避開該相容性問題
+RUN npm install
 
 # 複製完整專案並建置 Nuxt 產物
 COPY . .
-RUN bun run build
+RUN npm run build
 
 FROM oven/bun:1.2.22 AS runner
 WORKDIR /app
