@@ -3,12 +3,12 @@
 ## 測試前提
 
 - 已執行 `bun run db:migrate`
-- hosts 已設定：`oshop.com.hk`、`demo.oshop.com.hk`
-- 以 `demo.oshop.com.hk` 測試租戶子站
+- hosts 已設定：`shopgo.hk`、`demo.shopgo.hk`
+- 以 `demo.shopgo.hk` 測試租戶子站
 
 ## A. 會員註冊 / 登入 / 登出
 
-1. 進入 `http://demo.oshop.com.hk:3000/register`
+1. 進入 `http://demo.shopgo.hk:3000/register`
 2. 註冊新會員（email + password + 姓名）
 3. 預期：導向 `/profile`，頁首顯示會員身份
 4. 點擊登出
@@ -19,9 +19,9 @@
 ## B. Profile 路由守門（Route Guard）
 
 1. 先登出會員
-2. 直接開 `http://demo.oshop.com.hk:3000/profile`
+2. 直接開 `http://demo.shopgo.hk:3000/profile`
 3. 預期：被導向 `/login?redirect=%2Fprofile`
-4. 於主站 `http://oshop.com.hk:3000/profile` 開啟
+4. 於主站 `http://shopgo.hk:3000/profile` 開啟
 5. 預期：導回主頁（非租戶子站不允許會員中心）
 
 ## C. Profile 資料更新

@@ -6,7 +6,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   const tenantSlug = useState<string | null>('oshop-tenant-slug')
   const config = useRuntimeConfig()
-  const root = String(config.public.tenantRootDomain || 'oshop.com.hk')
+  const root = String(config.public.tenantRootDomain || 'shopgo.hk')
   const isAdminPublicEntry =
     to.path === '/admin/login' || to.path === '/admin/register'
 

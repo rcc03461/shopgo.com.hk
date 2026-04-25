@@ -1,6 +1,6 @@
 # 主站先行：Landing / Login / Register 實作計劃
 
-目標：在 `oshop.com.hk`（本機 hosts 指向 `127.0.0.1`）上先完成主站三頁與最小後端，租戶子網域與店舖功能往後迭代。
+目標：在 `shopgo.hk`（本機 hosts 指向 `127.0.0.1`）上先完成主站三頁與最小後端，租戶子網域與店舖功能往後迭代。
 
 ## 0. 安全與環境（先做）
 
@@ -19,7 +19,7 @@
 
 **驗收**
 
-- [ ] 本機以 `http://oshop.com.hk:3000`（或你設定的 port）可開啟三頁，版面為極簡風、行動版可用。
+- [ ] 本機以 `http://shopgo.hk:3000`（或你設定的 port）可開啟三頁，版面為極簡風、行動版可用。
 - [ ] Register 成功後 DB 有對應記錄（租戶 slug 唯一）；Login 可驗證已註冊帳號。
 - [ ] 表單錯誤（驗證失敗、重複 slug、錯誤密碼）有清楚、簡短中文提示。
 
@@ -33,14 +33,14 @@
 
 ### 2.2 本機網域
 
-- hosts 已加 `127.0.0.1 oshop.com.hk` 與 `*.oshop.com.hk`。
-- 開發時需讓瀏覽器訪問的主機名是 `oshop.com.hk`，例如：
+- hosts 已加 `127.0.0.1 shopgo.hk` 與 `*.shopgo.hk`。
+- 開發時需讓瀏覽器訪問的主機名是 `shopgo.hk`，例如：
 
 ```bash
-bun run dev -- --host oshop.com.hk
+bun run dev -- --host shopgo.hk
 ```
 
-（若 port 非 80，網址為 `http://oshop.com.hk:3000`。）
+（若 port 非 80，網址為 `http://shopgo.hk:3000`。）
 
 ### 2.3 資料庫與 Drizzle
 
@@ -65,7 +65,7 @@ bun run dev -- --host oshop.com.hk
 5. **API**：`server/api/auth/register.post.ts`、`server/api/auth/login.post.ts`（回傳錯誤碼與訊息一致化）。
 6. **頁面**：Landing 文案 + CTA；Login / Register 表單 + `useFetch` / `$fetch` 呼叫 API。
 7. **Cookie / Session**：登入成功寫 cookie；提供 `server/api/auth/me.get.ts` 可選，供頁首顯示狀態。
-8. **子網域預留（可選，極小成本）**：`middleware` 依 `host` 判斷：若為 `oshop.com.hk` 繼續；若為 `*.oshop.com.hk` 先顯示「租戶站即將開放」占位，避免之後大改。
+8. **子網域預留（可選，極小成本）**：`middleware` 依 `host` 判斷：若為 `shopgo.hk` 繼續；若為 `*.shopgo.hk` 先顯示「租戶站即將開放」占位，避免之後大改。
 
 ## 4. 待辦清單（勾選用）
 
@@ -106,4 +106,4 @@ bun run dev -- --host oshop.com.hk
 
 ---
 
-完成本文件所列項目後，再進入 PRD 下一塊：`shop_slug.oshop.com.hk` 租戶首頁模組與商品流。
+完成本文件所列項目後，再進入 PRD 下一塊：`shop_slug.shopgo.hk` 租戶首頁模組與商品流。
