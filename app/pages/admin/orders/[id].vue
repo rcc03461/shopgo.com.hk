@@ -187,6 +187,7 @@ const changeReasonDraft = ref('')
 const savingProfile = ref(false)
 const saveProfileErr = ref<string | null>(null)
 const saveProfileOk = ref(false)
+const showProfileDrawer = ref(false)
 
 function isOrderStatus(v: string): v is OrderStatus {
   return ORDER_STATUS_OPTIONS.some((option) => option.value === v)
@@ -383,9 +384,32 @@ async function saveCustomerProfile() {
         v-if="data.order.shippingData"
         class="mt-8 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm"
       >
-        <h2 class="text-base font-semibold text-neutral-900">
-          運送資料
-        </h2>
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-base font-semibold text-neutral-900">
+            運送資料
+          </h2>
+          <button
+            type="button"
+            class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-neutral-300 text-neutral-700 hover:bg-neutral-50"
+            title="編輯客戶資料"
+            aria-label="編輯客戶資料"
+            @click="showProfileDrawer = true"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+            </svg>
+          </button>
+        </div>
         <dl class="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <dt class="text-xs font-medium uppercase tracking-wide text-neutral-500">
@@ -477,88 +501,6 @@ async function saveCustomerProfile() {
             @click="saveStatus"
           >
             {{ savingStatus ? '更新中…' : '更新狀態' }}
-          </button>
-        </div>
-      </section>
-
-      <section class="mt-8 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-        <h2 class="text-base font-semibold text-neutral-900">
-          客戶資料修正
-        </h2>
-        <p class="mt-1 text-sm text-neutral-600">
-          用於客戶聯絡後修正收件資訊，會寫入異動歷史。
-        </p>
-        <p
-          v-if="saveProfileErr"
-          class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
-        >
-          {{ saveProfileErr }}
-        </p>
-        <p
-          v-if="saveProfileOk"
-          class="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
-        >
-          客戶資料已更新，並寫入歷史紀錄。
-        </p>
-        <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          <label class="text-sm text-neutral-700">
-            客戶 Email
-            <input
-              v-model="customerEmailDraft"
-              type="email"
-              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
-            >
-          </label>
-          <label class="text-sm text-neutral-700">
-            收件人
-            <input
-              v-model="shippingNameDraft"
-              type="text"
-              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
-            >
-          </label>
-          <label class="text-sm text-neutral-700">
-            聯絡電話
-            <input
-              v-model="shippingPhoneDraft"
-              type="text"
-              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
-            >
-          </label>
-          <label class="text-sm text-neutral-700 sm:col-span-2">
-            地址
-            <textarea
-              v-model="shippingAddressDraft"
-              rows="2"
-              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
-            />
-          </label>
-          <label class="text-sm text-neutral-700 sm:col-span-2">
-            備註
-            <textarea
-              v-model="shippingRemarksDraft"
-              rows="2"
-              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
-            />
-          </label>
-          <label class="text-sm text-neutral-700 sm:col-span-2">
-            修改原因（審計用途）
-            <input
-              v-model="changeReasonDraft"
-              type="text"
-              placeholder="例如：客戶來電更正電話號碼"
-              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
-            >
-          </label>
-        </div>
-        <div class="mt-4">
-          <button
-            type="button"
-            :disabled="savingProfile"
-            class="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
-            @click="saveCustomerProfile"
-          >
-            {{ savingProfile ? '更新中…' : '更新客戶資料' }}
           </button>
         </div>
       </section>
@@ -721,5 +663,117 @@ async function saveCustomerProfile() {
         </div>
       </section>
     </template>
+
+    <div
+      v-if="showProfileDrawer"
+      class="fixed inset-0 z-40"
+      role="dialog"
+      aria-modal="true"
+    >
+      <button
+        type="button"
+        class="absolute inset-0 bg-black/30"
+        aria-label="關閉抽屜"
+        @click="showProfileDrawer = false"
+      />
+      <aside
+        class="absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto border-l border-neutral-200 bg-white p-6 shadow-xl"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-lg font-semibold text-neutral-900">
+            客戶資料修正
+          </h2>
+          <button
+            type="button"
+            class="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+            @click="showProfileDrawer = false"
+          >
+            關閉
+          </button>
+        </div>
+
+        <p
+          v-if="saveProfileErr"
+          class="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          {{ saveProfileErr }}
+        </p>
+        <p
+          v-if="saveProfileOk"
+          class="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+        >
+          客戶資料已更新，並寫入歷史紀錄。
+        </p>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <label class="text-sm text-neutral-700">
+            客戶 Email
+            <input
+              v-model="customerEmailDraft"
+              type="email"
+              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            >
+          </label>
+          <label class="text-sm text-neutral-700">
+            收件人
+            <input
+              v-model="shippingNameDraft"
+              type="text"
+              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            >
+          </label>
+          <label class="text-sm text-neutral-700">
+            聯絡電話
+            <input
+              v-model="shippingPhoneDraft"
+              type="text"
+              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            >
+          </label>
+          <label class="text-sm text-neutral-700 sm:col-span-2">
+            地址
+            <textarea
+              v-model="shippingAddressDraft"
+              rows="2"
+              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            />
+          </label>
+          <label class="text-sm text-neutral-700 sm:col-span-2">
+            備註
+            <textarea
+              v-model="shippingRemarksDraft"
+              rows="2"
+              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            />
+          </label>
+          <label class="text-sm text-neutral-700 sm:col-span-2">
+            修改原因（審計用途）
+            <input
+              v-model="changeReasonDraft"
+              type="text"
+              placeholder="例如：客戶來電更正電話號碼"
+              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            >
+          </label>
+        </div>
+        <div class="mt-6 flex items-center gap-3">
+          <button
+            type="button"
+            :disabled="savingProfile"
+            class="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+            @click="saveCustomerProfile"
+          >
+            {{ savingProfile ? '更新中…' : '更新客戶資料' }}
+          </button>
+          <button
+            type="button"
+            class="rounded-md border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+            @click="showProfileDrawer = false"
+          >
+            取消
+          </button>
+        </div>
+      </aside>
+    </div>
   </div>
 </template>

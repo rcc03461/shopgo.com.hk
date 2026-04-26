@@ -80,7 +80,7 @@ function statusLabel(s: string) {
             <div class="flex items-center gap-3">
               <span class="rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-700">{{ statusLabel(o.status) }}</span>
               <span class="text-sm font-semibold text-neutral-900">{{ formatHkd(o.total) }}</span>
-              <NuxtLink :to="`/profile/orders/${o.orderUuid}`" class="text-sm text-neutral-700 underline">查看</NuxtLink>
+              <NuxtLink :to="`/invoices/${o.orderUuid}`" class="text-sm text-neutral-700 underline">查看發票</NuxtLink>
             </div>
           </li>
         </ul>

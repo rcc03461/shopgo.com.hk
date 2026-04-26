@@ -97,6 +97,13 @@ onMounted(async () => {
       </p>
       <div class="mt-10 flex flex-wrap justify-center gap-3">
         <NuxtLink
+          v-if="invoicePublicId"
+          :to="`/invoices/${invoicePublicId}`"
+          class="inline-flex rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+        >
+          查看發票
+        </NuxtLink>
+        <NuxtLink
           to="/products"
           class="inline-flex rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
         >

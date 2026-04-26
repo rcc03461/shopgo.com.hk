@@ -122,6 +122,14 @@ function eventDotClass(type: string) {
           <p class="mt-1 text-sm text-neutral-600">
             付款方式：{{ data.order.paymentProvider || '-' }} · Email：{{ data.order.customerEmail || '-' }}
           </p>
+          <div class="mt-4">
+            <NuxtLink
+              :to="`/invoices/${data.order.orderUuid}`"
+              class="inline-flex rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-800 hover:bg-neutral-50"
+            >
+              查看統一發票頁
+            </NuxtLink>
+          </div>
 
           <ul class="mt-6 divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
             <li v-for="line in data.order.lines" :key="line.id" class="px-4 py-4">
