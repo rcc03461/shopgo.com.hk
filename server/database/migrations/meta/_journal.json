@@ -134,6 +134,13 @@
       "when": 1777440000000,
       "tag": "0018_shop_order_history",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1777442400000,
+      "tag": "0019_customers_profile_data",
+      "breakpoints": true
     }
   ]
 }

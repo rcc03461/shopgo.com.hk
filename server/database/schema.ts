@@ -19,6 +19,21 @@ import {
 export type TenantSettingsJson = Record<string, unknown>
 export type ShopOrderShippingDataJson = Record<string, unknown>
 export type ShopOrderEventMetadataJson = Record<string, unknown>
+export type CustomerAddressBookItem = {
+  id: string
+  label?: string
+  name?: string
+  email?: string
+  phone?: string
+  address: string
+  remarks?: string
+}
+export type CustomerProfileDataJson = {
+  addresses?: CustomerAddressBookItem[]
+  preferredShippingMethods?: string[]
+  defaultAddressId?: string | null
+  defaultShippingMethod?: string | null
+}
 
 export const tenants = pgTable('tenants', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -93,6 +108,10 @@ export const customers = pgTable(
     passwordHash: text('password_hash').notNull(),
     fullName: varchar('full_name', { length: 120 }),
     phone: varchar('phone', { length: 32 }),
+    profileData: jsonb('profile_data')
+      .$type<CustomerProfileDataJson>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     status: varchar('status', { length: 32 }).notNull().default('active'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()

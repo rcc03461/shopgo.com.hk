@@ -29,6 +29,7 @@ export async function requireStoreCustomerSession(event: H3Event) {
       email: schema.customers.email,
       fullName: schema.customers.fullName,
       phone: schema.customers.phone,
+      profileData: schema.customers.profileData,
       status: schema.customers.status,
     })
     .from(schema.customers)

@@ -26,8 +26,31 @@ type ShippingSettings = {
   }
 }
 
+type AddressBookItem = {
+  id: string
+  label?: string
+  name?: string
+  email?: string
+  phone?: string
+  address: string
+  remarks?: string
+}
+
+type CustomerProfileResponse = {
+  profile: {
+    fullName: string
+    email: string
+    phone: string
+    addresses: AddressBookItem[]
+    preferredShippingMethods: string[]
+    defaultAddressId: string | null
+    defaultShippingMethod: string | null
+  }
+}
+
 const tenantSlug = useState<string | null>('oshop-tenant-slug')
 const { lines, subtotalMoney, syncFromServer } = useStoreCart()
+const { customer, refresh: refreshCustomer } = useCustomerAuth()
 const requestFetch = useRequestFetch()
 
 const customerEmail = ref('')
@@ -38,6 +61,8 @@ const shippingEmail = ref('')
 const shippingPhone = ref('')
 const shippingAddress = ref('')
 const shippingRemarks = ref('')
+const selectedAddressId = ref<string>('manual')
+const saveForNextUse = ref(false)
 const busy = ref(false)
 const err = ref<string | null>(null)
 
@@ -71,6 +96,19 @@ const { data: shippingSettingsData } = await useAsyncData(
 const enabledProviders = computed(() =>
   (optionsData.value?.providers ?? []).filter((p) => p.enabled),
 )
+
+await refreshCustomer()
+
+const { data: customerProfile } = await useAsyncData(
+  'store-profile-for-payment',
+  () =>
+    customer.value
+      ? requestFetch<CustomerProfileResponse>('/api/store/profile')
+      : Promise.resolve(null),
+  { watch: [customer] },
+)
+
+const savedAddresses = computed(() => customerProfile.value?.profile.addresses ?? [])
 
 const shippingMethods = computed(
   () => shippingSettingsData.value?.shippingMethods ?? ['Standard Shipping'],
@@ -107,6 +145,41 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => customerProfile.value,
+  (v) => {
+    if (!v) return
+    const profile = v.profile
+    customerEmail.value = profile.email || customerEmail.value
+    if (profile.defaultShippingMethod) {
+      shippingMethod.value = profile.defaultShippingMethod
+    } else if (profile.preferredShippingMethods.length > 0 && !shippingMethod.value) {
+      shippingMethod.value = profile.preferredShippingMethods[0] ?? shippingMethod.value
+    }
+    if (profile.defaultAddressId) {
+      selectedAddressId.value = profile.defaultAddressId
+    } else if (profile.addresses.length > 0) {
+      selectedAddressId.value = profile.addresses[0]!.id
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  selectedAddressId,
+  (id) => {
+    if (id === 'manual') return
+    const item = savedAddresses.value.find((address) => address.id === id)
+    if (!item) return
+    shippingName.value = item.name ?? shippingName.value
+    shippingEmail.value = item.email ?? shippingEmail.value
+    shippingPhone.value = item.phone ?? shippingPhone.value
+    shippingAddress.value = item.address ?? shippingAddress.value
+    shippingRemarks.value = item.remarks ?? shippingRemarks.value
+  },
+  { immediate: true },
+)
+
 onMounted(() => {
   if (tenantSlug.value && lines.value.length === 0) {
     void navigateTo('/cart')
@@ -138,6 +211,50 @@ async function submitCheckout() {
   }
   busy.value = true
   try {
+    if (customer.value && saveForNextUse.value) {
+      const payloadAddress = {
+        id:
+          selectedAddressId.value !== 'manual'
+            ? selectedAddressId.value
+            : `addr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+        label:
+          selectedAddressId.value !== 'manual'
+            ? savedAddresses.value.find((item) => item.id === selectedAddressId.value)?.label
+            : '付款頁儲存',
+        name: shippingName.value.trim() || undefined,
+        email: shippingEmail.value.trim() || undefined,
+        phone: shippingPhone.value.trim() || undefined,
+        address: shippingAddress.value.trim(),
+        remarks: shippingRemarks.value.trim() || undefined,
+      }
+      const nextAddresses = (() => {
+        const base = customerProfile.value?.profile.addresses ?? []
+        const idx = base.findIndex((item) => item.id === payloadAddress.id)
+        if (idx >= 0) {
+          const cloned = [...base]
+          cloned[idx] = payloadAddress
+          return cloned
+        }
+        return [payloadAddress, ...base].slice(0, 20)
+      })()
+      const nextMethods = Array.from(
+        new Set(
+          [shippingMethod.value, ...(customerProfile.value?.profile.preferredShippingMethods ?? [])].filter(
+            (item) => Boolean(item),
+          ),
+        ),
+      )
+      await requestFetch('/api/store/profile', {
+        method: 'PATCH',
+        body: {
+          addresses: nextAddresses,
+          preferredShippingMethods: nextMethods,
+          defaultAddressId: payloadAddress.id,
+          defaultShippingMethod: shippingMethod.value,
+        },
+      })
+    }
+
     const res = await requestFetch<{
       ok: true
       redirectUrl: string
@@ -238,6 +355,24 @@ async function submitCheckout() {
           >
         </div>
 
+        <div
+          v-if="customer && savedAddresses.length > 0"
+          class="rounded-md border border-neutral-200 bg-neutral-50 p-3"
+        >
+          <label class="block text-sm font-medium text-neutral-800">已儲存地址</label>
+          <select
+            v-model="selectedAddressId"
+            class="mt-1 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+          >
+            <option value="manual">
+              手動輸入新地址
+            </option>
+            <option v-for="addr in savedAddresses" :key="addr.id" :value="addr.id">
+              {{ addr.label || addr.name || '未命名地址' }} - {{ addr.address }}
+            </option>
+          </select>
+        </div>
+
         <div>
           <span class="block text-sm font-medium text-neutral-800">運送方式</span>
           <div class="mt-2 flex flex-col gap-2">
@@ -306,6 +441,18 @@ async function submitCheckout() {
             />
           </div>
         </div>
+
+        <label
+          v-if="customer"
+          class="inline-flex items-center gap-2 rounded-md border border-neutral-200 px-3 py-2 text-sm text-neutral-700"
+        >
+          <input
+            v-model="saveForNextUse"
+            type="checkbox"
+            class="size-4"
+          >
+          保存本次地址與運送方式，供下次付款直接使用
+        </label>
 
         <div>
           <span class="block text-sm font-medium text-neutral-800">付款方式</span>
