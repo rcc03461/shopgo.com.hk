@@ -25,3 +25,6 @@ public/uploads
 .env
 .env.*
 !.env.example
+
+# Sentry Config File
+.env.sentry-build-plugin

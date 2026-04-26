@@ -1,9 +1,11 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
+
   experimental: {
     serverAppConfig: false
   },
+
   // hooks: {
   //   'nitro:config'(nitroConfig) {
   //     if (nitroConfig.imports?.imports) {
@@ -14,8 +16,10 @@ export default defineNuxtConfig({
   //   },
   // },
   devtools: { enabled: true },
-  modules: ['@nuxtjs/tailwindcss'],
+
+  modules: ['@nuxtjs/tailwindcss', '@sentry/nuxt/module'],
   css: ['~/assets/css/tailwind.css'],
+
   routeRules: {
     // 後台與登入後互動頁不需要 SSR，但仍保留 Nitro API 與後端能力。
     '/admin/**': { ssr: false },
@@ -27,16 +31,19 @@ export default defineNuxtConfig({
     '/profile': { ssr: false },
     '/profile/**': { ssr: false },
   },
+
   // Windows 上 hosts 將 shopgo.hk 指到 127.0.0.1（IPv4），若 dev 只綁 ::1 會 ERR_CONNECTION_REFUSED
   devServer: {
     host: '0.0.0.0',
   },
+
   vite: {
     server: {
       // 自訂網域開發時避免 Vite 擋 Host（監聽位址請用 package.json 的 dev --host）
       allowedHosts: ['shopgo.hk', '.shopgo.hk', 'localhost', '127.0.0.1'],
     },
   },
+
   runtimeConfig: {
     public: {
       /** 租戶子網域根（Cookie Domain 與導向網址用） */
@@ -61,5 +68,14 @@ export default defineNuxtConfig({
         : 'dev-only-oshop-jwt-secret'),
     /** 32 bytes base64；加密儲存 Stripe / PayPal 密鑰用（正式環境建議設定） */
     paymentSecretsKey: (process.env.PAYMENT_SECRETS_KEY || '').trim(),
+  },
+
+  sentry: {
+    org: 'cre8ir',
+    project: 'javascript-nuxt',
+  },
+
+  sourcemap: {
+    client: 'hidden',
   },
 })
