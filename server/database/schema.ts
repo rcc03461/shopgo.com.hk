@@ -18,6 +18,7 @@ import {
 /** 商店前台／後台設定（不需單獨索引搜尋的欄位集中於此 JSON） */
 export type TenantSettingsJson = Record<string, unknown>
 export type ShopOrderShippingDataJson = Record<string, unknown>
+export type ShopOrderEventMetadataJson = Record<string, unknown>
 
 export const tenants = pgTable('tenants', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -540,6 +541,71 @@ export const shopOrders = pgTable(
       t.customerId,
       t.createdAt,
     ),
+  ],
+)
+
+export const shopOrderEvents = pgTable(
+  'shop_order_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => shopOrders.id, { onDelete: 'cascade' }),
+    eventType: varchar('event_type', { length: 64 }).notNull(),
+    actorType: varchar('actor_type', { length: 32 }).notNull().default('system'),
+    actorId: uuid('actor_id'),
+    source: varchar('source', { length: 32 }).notNull().default('api'),
+    note: text('note'),
+    metadata: jsonb('metadata')
+      .$type<ShopOrderEventMetadataJson>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    eventAt: timestamp('event_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    index('shop_order_events_tenant_order_event_at_idx').on(
+      t.tenantId,
+      t.orderId,
+      t.eventAt,
+    ),
+    index('shop_order_events_order_id_idx').on(t.orderId),
+  ],
+)
+
+export const shopOrderChangeLogs = pgTable(
+  'shop_order_change_logs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => shopOrders.id, { onDelete: 'cascade' }),
+    actorType: varchar('actor_type', { length: 32 }).notNull().default('system'),
+    actorId: uuid('actor_id'),
+    reason: text('reason'),
+    fieldName: varchar('field_name', { length: 128 }).notNull(),
+    oldValue: text('old_value'),
+    newValue: text('new_value'),
+    changedAt: timestamp('changed_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    index('shop_order_change_logs_tenant_order_changed_at_idx').on(
+      t.tenantId,
+      t.orderId,
+      t.changedAt,
+    ),
+    index('shop_order_change_logs_order_id_idx').on(t.orderId),
   ],
 )
 

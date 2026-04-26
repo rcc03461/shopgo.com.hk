@@ -76,7 +76,16 @@ export function decryptSecretsJson(blob: string, key: Buffer): Record<string, st
   const data = raw.subarray(IV_LEN, raw.length - TAG_LEN)
   const decipher = createDecipheriv(ALGO, key, iv)
   decipher.setAuthTag(tag)
-  const plain = Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8')
+  let plain: string
+  try {
+    plain = Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8')
+  } catch {
+    throw createError({
+      statusCode: 503,
+      message:
+        '金流密鑰無法解密：請確認 PAYMENT_SECRETS_KEY 與儲存設定時一致，或在後台重新輸入並儲存收款密鑰',
+    })
+  }
   let parsed: unknown
   try {
     parsed = JSON.parse(plain) as unknown

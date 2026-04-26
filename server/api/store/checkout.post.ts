@@ -8,6 +8,7 @@ import {
 } from '../../utils/paymentProviderSchemas'
 import { resolveCheckoutLines } from '../../utils/storeCheckoutResolveLines'
 import { storeCheckoutBodySchema } from '../../utils/storeCheckoutSchemas'
+import { getOrderEventTypeByStatus } from '../../utils/orderHistory'
 import {
   paypalCreateOrderJson,
   paypalFetchAccessToken,
@@ -78,6 +79,20 @@ export default defineEventHandler(async (event) => {
       lineTotal: l.lineTotal,
     })),
   )
+
+  await db.insert(schema.shopOrderEvents).values({
+    tenantId: tenant.id,
+    orderId: order.id,
+    eventType: 'order_created',
+    actorType: customerSession ? 'customer' : 'system',
+    actorId: customerSession?.customerId ?? null,
+    source: 'store',
+    metadata: {
+      status: order.status,
+      paymentProvider: order.paymentProvider,
+      total: String(order.total),
+    },
+  })
 
   const reqUrl = getRequestURL(event)
   const origin = `${reqUrl.protocol}//${reqUrl.host}`
@@ -192,13 +207,28 @@ export default defineEventHandler(async (event) => {
       redirectUrl: approve,
     }
   } catch (e) {
-    await db
-      .update(schema.shopOrders)
-      .set({
-        status: 'payment_failed',
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.shopOrders.id, order.id))
+    await db.transaction(async (tx) => {
+      await tx
+        .update(schema.shopOrders)
+        .set({
+          status: 'payment_failed',
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.shopOrders.id, order.id))
+
+      const eventType = getOrderEventTypeByStatus('payment_failed')
+      if (eventType) {
+        await tx.insert(schema.shopOrderEvents).values({
+          tenantId: tenant.id,
+          orderId: order.id,
+          eventType,
+          actorType: customerSession ? 'customer' : 'system',
+          actorId: customerSession?.customerId ?? null,
+          source: 'store',
+          metadata: { reason: 'payment_provider_error' },
+        })
+      }
+    })
     throw e
   }
 })

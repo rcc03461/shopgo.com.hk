@@ -16,6 +16,7 @@ import {
 import { stripeGetJson } from '../../../utils/storeStripeHttp'
 import { loadTenantPaymentSecrets } from '../../../utils/storeTenantPayment'
 import { requireStoreTenant } from '../../../utils/storeTenant'
+import { getOrderEventTypeByStatus } from '../../../utils/orderHistory'
 
 const bodySchema = z.discriminatedUnion('provider', [
   z.object({
@@ -117,6 +118,18 @@ export default defineEventHandler(async (event) => {
           updatedAt: new Date(),
         })
         .where(eq(schema.shopOrders.id, order.id))
+      const eventType = getOrderEventTypeByStatus('paid')
+      if (eventType) {
+        await tx.insert(schema.shopOrderEvents).values({
+          tenantId: tenant.id,
+          orderId: order.id,
+          eventType,
+          actorType: 'customer',
+          actorId: order.customerId ?? null,
+          source: 'store',
+          metadata: { provider: 'stripe' },
+        })
+      }
     })
 
     return {
@@ -164,6 +177,18 @@ export default defineEventHandler(async (event) => {
         updatedAt: new Date(),
       })
       .where(eq(schema.shopOrders.id, order.id))
+    const eventType = getOrderEventTypeByStatus('paid')
+    if (eventType) {
+      await tx.insert(schema.shopOrderEvents).values({
+        tenantId: tenant.id,
+        orderId: order.id,
+        eventType,
+        actorType: 'customer',
+        actorId: order.customerId ?? null,
+        source: 'store',
+        metadata: { provider: 'paypal' },
+      })
+    }
   })
 
   return {

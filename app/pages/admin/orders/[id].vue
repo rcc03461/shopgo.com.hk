@@ -35,6 +35,33 @@ type Detail = {
   lines: Line[]
 }
 
+type TimelineEvent = {
+  id: string
+  eventType: string
+  actorType: string
+  actorId: string | null
+  source: string
+  note: string | null
+  metadata: Record<string, unknown>
+  eventAt: string
+}
+
+type TimelineChange = {
+  id: string
+  fieldName: string
+  oldValue: string | null
+  newValue: string | null
+  actorType: string
+  actorId: string | null
+  reason: string | null
+  changedAt: string
+}
+
+type TimelineResponse = {
+  events: TimelineEvent[]
+  changes: TimelineChange[]
+}
+
 type OrderStatus =
   | 'pending_payment'
   | 'paid'
@@ -56,6 +83,16 @@ const { data, error, refresh } = await useAsyncData(
   () => `admin-order-detail-${id.value}`,
   async () => {
     return await requestFetch<Detail>(`/api/admin/orders/${id.value}`, {
+      credentials: 'include',
+    })
+  },
+  { watch: [id] },
+)
+
+const { data: timeline, refresh: refreshTimeline } = await useAsyncData(
+  () => `admin-order-timeline-${id.value}`,
+  async () => {
+    return await requestFetch<TimelineResponse>(`/api/admin/orders/${id.value}/timeline`, {
       credentials: 'include',
     })
   },
@@ -108,6 +145,31 @@ function providerLabel(p: string | null) {
   return p
 }
 
+function eventLabel(type: string) {
+  if (type === 'order_created') return '訂單建立'
+  if (type === 'payment_confirmed') return '付款完成'
+  if (type === 'payment_failed') return '付款失敗'
+  if (type === 'shipping_started') return '開始運送'
+  if (type === 'delivered_signed') return '已簽收'
+  if (type === 'customer_info_updated') return '客戶資料已更新'
+  return type
+}
+
+function actorLabel(type: string) {
+  if (type === 'admin') return '管理員'
+  if (type === 'customer') return '客戶'
+  return '系統'
+}
+
+function eventDotClass(type: string) {
+  if (type === 'payment_confirmed') return 'bg-emerald-500'
+  if (type === 'shipping_started') return 'bg-blue-500'
+  if (type === 'delivered_signed') return 'bg-violet-500'
+  if (type === 'payment_failed') return 'bg-red-500'
+  if (type === 'customer_info_updated') return 'bg-amber-500'
+  return 'bg-neutral-400'
+}
+
 function shippingField(v: unknown) {
   return typeof v === 'string' && v.trim() ? v.trim() : '—'
 }
@@ -116,6 +178,15 @@ const statusDraft = ref<OrderStatus>('pending_payment')
 const savingStatus = ref(false)
 const saveStatusErr = ref<string | null>(null)
 const saveStatusOk = ref(false)
+const customerEmailDraft = ref('')
+const shippingNameDraft = ref('')
+const shippingPhoneDraft = ref('')
+const shippingAddressDraft = ref('')
+const shippingRemarksDraft = ref('')
+const changeReasonDraft = ref('')
+const savingProfile = ref(false)
+const saveProfileErr = ref<string | null>(null)
+const saveProfileOk = ref(false)
 
 function isOrderStatus(v: string): v is OrderStatus {
   return ORDER_STATUS_OPTIONS.some((option) => option.value === v)
@@ -132,6 +203,23 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => data.value?.order,
+  (order) => {
+    if (!order) return
+    customerEmailDraft.value = order.customerEmail ?? ''
+    shippingNameDraft.value =
+      typeof order.shippingData?.name === 'string' ? order.shippingData.name : ''
+    shippingPhoneDraft.value =
+      typeof order.shippingData?.phone === 'string' ? order.shippingData.phone : ''
+    shippingAddressDraft.value =
+      typeof order.shippingData?.address === 'string' ? order.shippingData.address : ''
+    shippingRemarksDraft.value =
+      typeof order.shippingData?.remarks === 'string' ? order.shippingData.remarks : ''
+  },
+  { immediate: true },
+)
+
 async function saveStatus() {
   if (!data.value) return
   savingStatus.value = true
@@ -141,15 +229,50 @@ async function saveStatus() {
     await $fetch(`/api/admin/orders/${data.value.order.id}`, {
       method: 'PATCH',
       credentials: 'include',
-      body: { status: statusDraft.value },
+      body: { status: statusDraft.value, note: '管理員手動更新狀態' },
     })
     await refresh()
+    await refreshTimeline()
     saveStatusOk.value = true
   } catch (e: unknown) {
     const x = e as { data?: { message?: string }; message?: string }
     saveStatusErr.value = x?.data?.message || x?.message || '更新狀態失敗'
   } finally {
     savingStatus.value = false
+  }
+}
+
+async function saveCustomerProfile() {
+  if (!data.value) return
+  savingProfile.value = true
+  saveProfileErr.value = null
+  saveProfileOk.value = false
+  try {
+    const shippingData = {
+      ...(data.value.order.shippingData ?? {}),
+      name: shippingNameDraft.value.trim() || undefined,
+      phone: shippingPhoneDraft.value.trim() || undefined,
+      address: shippingAddressDraft.value.trim() || undefined,
+      remarks: shippingRemarksDraft.value.trim() || undefined,
+    }
+    await $fetch(`/api/admin/orders/${data.value.order.id}`, {
+      method: 'PATCH',
+      credentials: 'include',
+      body: {
+        customerEmail: customerEmailDraft.value.trim() || null,
+        shippingData,
+        changeReason: changeReasonDraft.value.trim() || '管理員修正客戶資料',
+        note: '客戶資料更新',
+      },
+    })
+    await refresh()
+    await refreshTimeline()
+    saveProfileOk.value = true
+  } catch (e: unknown) {
+    const x = e as { data?: { message?: string }; message?: string }
+    saveProfileErr.value = x?.data?.message || x?.message || '更新客戶資料失敗'
+  } finally {
+    savingProfile.value = false
   }
 }
 </script>
@@ -355,6 +478,185 @@ async function saveStatus() {
           >
             {{ savingStatus ? '更新中…' : '更新狀態' }}
           </button>
+        </div>
+      </section>
+
+      <section class="mt-8 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
+        <h2 class="text-base font-semibold text-neutral-900">
+          客戶資料修正
+        </h2>
+        <p class="mt-1 text-sm text-neutral-600">
+          用於客戶聯絡後修正收件資訊，會寫入異動歷史。
+        </p>
+        <p
+          v-if="saveProfileErr"
+          class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          {{ saveProfileErr }}
+        </p>
+        <p
+          v-if="saveProfileOk"
+          class="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+        >
+          客戶資料已更新，並寫入歷史紀錄。
+        </p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <label class="text-sm text-neutral-700">
+            客戶 Email
+            <input
+              v-model="customerEmailDraft"
+              type="email"
+              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            >
+          </label>
+          <label class="text-sm text-neutral-700">
+            收件人
+            <input
+              v-model="shippingNameDraft"
+              type="text"
+              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            >
+          </label>
+          <label class="text-sm text-neutral-700">
+            聯絡電話
+            <input
+              v-model="shippingPhoneDraft"
+              type="text"
+              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            >
+          </label>
+          <label class="text-sm text-neutral-700 sm:col-span-2">
+            地址
+            <textarea
+              v-model="shippingAddressDraft"
+              rows="2"
+              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            />
+          </label>
+          <label class="text-sm text-neutral-700 sm:col-span-2">
+            備註
+            <textarea
+              v-model="shippingRemarksDraft"
+              rows="2"
+              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            />
+          </label>
+          <label class="text-sm text-neutral-700 sm:col-span-2">
+            修改原因（審計用途）
+            <input
+              v-model="changeReasonDraft"
+              type="text"
+              placeholder="例如：客戶來電更正電話號碼"
+              class="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
+            >
+          </label>
+        </div>
+        <div class="mt-4">
+          <button
+            type="button"
+            :disabled="savingProfile"
+            class="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+            @click="saveCustomerProfile"
+          >
+            {{ savingProfile ? '更新中…' : '更新客戶資料' }}
+          </button>
+        </div>
+      </section>
+
+      <section class="mt-8 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
+        <h2 class="text-base font-semibold text-neutral-900">
+          流程記錄
+        </h2>
+        <ul class="mt-4">
+          <li
+            v-for="item in timeline?.events || []"
+            :key="item.id"
+            class="relative pl-8 pb-4 last:pb-0"
+          >
+            <span
+              class="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full"
+              :class="eventDotClass(item.eventType)"
+            />
+            <span
+              class="absolute left-[4px] top-4 bottom-0 w-px bg-neutral-200"
+              aria-hidden="true"
+            />
+            <div class="rounded-md border border-neutral-200 bg-white px-3 py-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-sm font-medium text-neutral-900">
+                  {{ eventLabel(item.eventType) }}
+                </p>
+                <p class="text-xs text-neutral-500">
+                  {{ formatTime(item.eventAt) }}
+                </p>
+              </div>
+              <p class="mt-1 text-xs text-neutral-600">
+                來源：{{ actorLabel(item.actorType) }} / {{ item.source }}
+              </p>
+              <p v-if="item.note" class="mt-1 text-xs text-neutral-600">
+                備註：{{ item.note }}
+              </p>
+            </div>
+          </li>
+          <li
+            v-if="!(timeline?.events || []).length"
+            class="rounded-md border border-dashed border-neutral-300 px-3 py-4 text-sm text-neutral-500"
+          >
+            尚無流程記錄
+          </li>
+        </ul>
+      </section>
+
+      <section class="mt-8 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
+        <h2 class="text-base font-semibold text-neutral-900">
+          資料異動紀錄
+        </h2>
+        <div class="mt-4 overflow-x-auto">
+          <table class="min-w-full divide-y divide-neutral-200 text-sm">
+            <thead class="bg-neutral-50 text-left text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <tr>
+                <th class="px-3 py-2">
+                  時間
+                </th>
+                <th class="px-3 py-2">
+                  欄位
+                </th>
+                <th class="px-3 py-2">
+                  舊值
+                </th>
+                <th class="px-3 py-2">
+                  新值
+                </th>
+                <th class="px-3 py-2">
+                  原因
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-neutral-200">
+              <tr v-for="item in timeline?.changes || []" :key="item.id">
+                <td class="whitespace-nowrap px-3 py-2 text-xs text-neutral-600">
+                  {{ formatTime(item.changedAt) }}
+                </td>
+                <td class="px-3 py-2 font-mono text-xs text-neutral-800">
+                  {{ item.fieldName }}
+                </td>
+                <td class="px-3 py-2 text-xs text-neutral-700">
+                  {{ item.oldValue || '—' }}
+                </td>
+                <td class="px-3 py-2 text-xs text-neutral-900">
+                  {{ item.newValue || '—' }}
+                </td>
+                <td class="px-3 py-2 text-xs text-neutral-700">
+                  {{ item.reason || '—' }}
+                </td>
+              </tr>
+              <tr v-if="!(timeline?.changes || []).length">
+                <td colspan="5" class="px-3 py-4 text-center text-sm text-neutral-500">
+                  尚無資料異動紀錄
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 

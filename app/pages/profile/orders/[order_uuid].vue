@@ -25,6 +25,13 @@ type OrderDetail = {
   }[]
 }
 
+type TimelineEvent = {
+  id: string
+  eventType: string
+  note: string | null
+  eventAt: string
+}
+
 const route = useRoute()
 const requestFetch = useRequestFetch()
 const { customer, refresh } = useCustomerAuth()
@@ -41,6 +48,15 @@ const { data, error } = await useAsyncData(
   { watch: [orderUuid] },
 )
 
+const { data: timeline } = await useAsyncData(
+  'store-order-timeline',
+  () =>
+    requestFetch<{ events: TimelineEvent[] }>(
+      `/api/store/orders/${encodeURIComponent(orderUuid.value)}/timeline`,
+    ),
+  { watch: [orderUuid] },
+)
+
 function statusLabel(s: string) {
   if (s === 'paid') return '已付款'
   if (s === 'pending_payment') return '待付款'
@@ -48,6 +64,25 @@ function statusLabel(s: string) {
   if (s === 'shipping') return '運送中'
   if (s === 'signed') return '已簽收'
   return s
+}
+
+function eventLabel(type: string) {
+  if (type === 'order_created') return '訂單建立'
+  if (type === 'payment_confirmed') return '付款完成'
+  if (type === 'payment_failed') return '付款失敗'
+  if (type === 'shipping_started') return '開始運送'
+  if (type === 'delivered_signed') return '已簽收'
+  if (type === 'customer_info_updated') return '收件資料已更新'
+  return type
+}
+
+function eventDotClass(type: string) {
+  if (type === 'payment_confirmed') return 'bg-emerald-500'
+  if (type === 'shipping_started') return 'bg-blue-500'
+  if (type === 'delivered_signed') return 'bg-violet-500'
+  if (type === 'payment_failed') return 'bg-red-500'
+  if (type === 'customer_info_updated') return 'bg-amber-500'
+  return 'bg-neutral-400'
 }
 </script>
 
@@ -113,6 +148,47 @@ function statusLabel(s: string) {
               <span class="text-base font-semibold text-neutral-900">{{ formatHkd(data.order.total) }}</span>
             </div>
           </div>
+
+          <section class="mt-6 rounded-lg border border-neutral-200 bg-white p-4">
+            <h2 class="text-base font-semibold text-neutral-900">
+              訂單進度
+            </h2>
+            <ul class="mt-3">
+              <li
+                v-for="item in timeline?.events || []"
+                :key="item.id"
+                class="relative pl-8 pb-4 last:pb-0"
+              >
+                <span
+                  class="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full"
+                  :class="eventDotClass(item.eventType)"
+                />
+                <span
+                  class="absolute left-[4px] top-4 bottom-0 w-px bg-neutral-200"
+                  aria-hidden="true"
+                />
+                <div class="rounded-md border border-neutral-200 bg-white px-3 py-2">
+                  <div class="flex items-center justify-between gap-2">
+                    <p class="text-sm font-medium text-neutral-900">
+                      {{ eventLabel(item.eventType) }}
+                    </p>
+                    <p class="text-xs text-neutral-500">
+                      {{ new Date(item.eventAt).toLocaleString('zh-HK') }}
+                    </p>
+                  </div>
+                  <p v-if="item.note" class="mt-1 text-xs text-neutral-600">
+                    {{ item.note }}
+                  </p>
+                </div>
+              </li>
+              <li
+                v-if="!(timeline?.events || []).length"
+                class="rounded-md border border-dashed border-neutral-300 px-3 py-3 text-sm text-neutral-500"
+              >
+                尚無可顯示的進度紀錄
+              </li>
+            </ul>
+          </section>
         </template>
       </section>
     </div>
