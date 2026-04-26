@@ -25,6 +25,8 @@ const page = ref(1)
 const pageSize = ref(20)
 const status = ref<CategoryStatus[]>([])
 const updatingStatusId = ref<string | null>(null)
+const drawerOpen = ref(false)
+const editingCategoryId = ref<string | null>(null)
 
 const requestFetch = useRequestFetch()
 
@@ -90,6 +92,29 @@ async function toggleStatus(row: Row, enabled: boolean) {
     updatingStatusId.value = null
   }
 }
+
+const drawerTitle = computed(() => (editingCategoryId.value ? '編輯分類' : '新增分類'))
+const drawerSubtitle = computed(() =>
+  editingCategoryId.value
+    ? `分類 id：${editingCategoryId.value}`
+    : '建立後會立即更新列表',
+)
+
+function openCreateDrawer() {
+  editingCategoryId.value = null
+  drawerOpen.value = true
+}
+
+function openEditDrawer(id: string) {
+  editingCategoryId.value = id
+  drawerOpen.value = true
+}
+
+async function onFormSaved(savedId: string) {
+  editingCategoryId.value = savedId
+  await refresh()
+  drawerOpen.value = false
+}
 </script>
 
 <template>
@@ -101,12 +126,13 @@ async function toggleStatus(row: Row, enabled: boolean) {
           以 id 編輯；前台網址使用 slug；可選上層分類。
         </p>
       </div>
-      <NuxtLink
-        to="/admin/categories/new"
+      <button
+        type="button"
         class="rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+        @click="openCreateDrawer"
       >
         新增分類
-      </NuxtLink>
+      </button>
     </div>
 
     <div class="mt-4 flex max-w-md gap-2">
@@ -190,12 +216,13 @@ async function toggleStatus(row: Row, enabled: boolean) {
               {{ formatTime(row.updatedAt) }}
             </td>
             <td class="px-4 py-3 text-right">
-              <NuxtLink
-                :to="`/admin/categories/${row.id}`"
+              <button
+                type="button"
                 class="text-sm font-medium text-neutral-900 underline-offset-2 hover:underline"
+                @click="openEditDrawer(row.id)"
               >
                 編輯
-              </NuxtLink>
+              </button>
             </td>
           </tr>
         </tbody>
@@ -226,5 +253,18 @@ async function toggleStatus(row: Row, enabled: boolean) {
         </button>
       </div>
     </div>
+
+    <AdminEntityDrawer
+      v-model:open="drawerOpen"
+      :title="drawerTitle"
+      :subtitle="drawerSubtitle"
+      width-class="max-w-xl"
+    >
+      <AdminCategoryUpsertForm
+        :category-id="editingCategoryId"
+        @saved="onFormSaved"
+        @cancelled="drawerOpen = false"
+      />
+    </AdminEntityDrawer>
   </div>
 </template>

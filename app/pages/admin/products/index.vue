@@ -34,6 +34,8 @@ const pageSize = ref(20)
 const status = ref<ProductStatus[]>([])
 const categoryIds = ref<string[]>([])
 const updatingStatusId = ref<string | null>(null)
+const drawerOpen = ref(false)
+const editingProductId = ref<string | null>(null)
 
 /** SSR 時須沿用當前請求的 Cookie/Host，否則內部 /api/admin/* 會拿不到登入態或租戶 Host。 */
 const requestFetch = useRequestFetch()
@@ -161,6 +163,29 @@ const categoryFilterOptions = computed(() =>
     count: data.value?.categoryCounts?.[category.id] ?? 0,
   })),
 )
+
+const drawerTitle = computed(() => (editingProductId.value ? '編輯商品' : '新增商品'))
+const drawerSubtitle = computed(() =>
+  editingProductId.value
+    ? `商品 id：${editingProductId.value}`
+    : '建立後會立即更新列表',
+)
+
+function openCreateDrawer() {
+  editingProductId.value = null
+  drawerOpen.value = true
+}
+
+function openEditDrawer(id: string) {
+  editingProductId.value = id
+  drawerOpen.value = true
+}
+
+async function onFormSaved(savedId: string) {
+  editingProductId.value = savedId
+  await refresh()
+  drawerOpen.value = false
+}
 </script>
 
 <template>
@@ -172,12 +197,13 @@ const categoryFilterOptions = computed(() =>
           以 id 編輯；前台網址仍使用 slug。
         </p>
       </div>
-      <NuxtLink
-        to="/admin/products/new"
+      <button
+        type="button"
         class="rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+        @click="openCreateDrawer"
       >
         新增商品
-      </NuxtLink>
+      </button>
     </div>
 
     <div class="mt-4 flex max-w-md gap-2">
@@ -279,12 +305,13 @@ const categoryFilterOptions = computed(() =>
               {{ formatTime(row.updatedAt) }}
             </td>
             <td class="px-4 py-3 text-right">
-              <NuxtLink
-                :to="`/admin/products/${row.id}`"
+              <button
+                type="button"
                 class="text-sm font-medium text-neutral-900 underline-offset-2 hover:underline"
+                @click="openEditDrawer(row.id)"
               >
                 編輯
-              </NuxtLink>
+              </button>
             </td>
           </tr>
         </tbody>
@@ -325,5 +352,18 @@ const categoryFilterOptions = computed(() =>
         </button>
       </div>
     </div>
+
+    <AdminEntityDrawer
+      v-model:open="drawerOpen"
+      :title="drawerTitle"
+      :subtitle="drawerSubtitle"
+      width-class="max-w-2xl"
+    >
+      <AdminProductUpsertForm
+        :product-id="editingProductId"
+        @saved="onFormSaved"
+        @cancelled="drawerOpen = false"
+      />
+    </AdminEntityDrawer>
   </div>
 </template>
