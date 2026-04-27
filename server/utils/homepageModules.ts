@@ -58,7 +58,7 @@ const defaultModules: HomepageModule[] = [
     moduleType: 'footer',
     sortOrder: 5,
     isEnabled: true,
-    config: { text: '© OShop · shopgo.hk' },
+    config: { text: '© OShop · shopgo.com.hk' },
   },
 ]
 

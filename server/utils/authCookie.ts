@@ -5,7 +5,7 @@ import { AUTH_COOKIE } from './authJwt'
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7
 
 /**
- * 在 shopgo.hk / *.shopgo.hk 使用 Domain=.root，讓子網域共用 Session。
+ * 在 shopgo.com.hk / *.shopgo.com.hk 使用 Domain=.root，讓子網域共用 Session。
  * localhost 不設定 domain（僅 host-only）。
  */
 function resolveSessionCookieDomain(event: H3Event): string | undefined {

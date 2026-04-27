@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 为 `http://demo.shopgo.hk:3000/` 的首页落地三个可维护区块：Hero、Slider、Categories Products，并保持现有多租户分支逻辑不回归。
+**Goal:** 为 `http://demo.shopgo.com.hk:3000/` 的首页落地三个可维护区块：Hero、Slider、Categories Products，并保持现有多租户分支逻辑不回归。
 
 **Architecture:** 采用「页面编排 + 区块组件」结构：`app/pages/index.vue` 只负责数据与区块装配，视觉与交互拆分到独立组件。以静态假资料先落地 UI 与交互，再预留后续接入 API 的接口位，避免一次性引入过多后端耦合。
 
@@ -88,7 +88,7 @@ Expected: FAIL，提示无法解析 `LandingHeroSection` 组件。
 - [ ] **Step 4: 运行开发服务，验证可见**
 
 Run: `bun dev`  
-Expected: PASS，打开 `http://demo.shopgo.hk:3000/` 可看到 Hero 区块与双 CTA。
+Expected: PASS，打开 `http://demo.shopgo.com.hk:3000/` 可看到 Hero 区块与双 CTA。
 
 - [ ] **Step 5: Commit**
 

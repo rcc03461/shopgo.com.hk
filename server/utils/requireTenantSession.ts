@@ -14,7 +14,7 @@ export async function requireTenantSession(event: H3Event): Promise<SessionPaylo
 
   const session = await verifySessionToken(event, token)
   const config = useRuntimeConfig(event)
-  const root = String(config.public.tenantRootDomain || 'shopgo.hk')
+  const root = String(config.public.tenantRootDomain || 'shopgo.com.hk')
   const host = getRequestURL(event).host
   const slug = parseTenantSlugFromHost(host, root)
 

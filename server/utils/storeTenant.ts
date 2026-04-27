@@ -10,7 +10,7 @@ import { getDb } from './db'
  */
 export async function requireStoreTenant(event: H3Event) {
   const config = useRuntimeConfig(event)
-  const root = String(config.public.tenantRootDomain || 'shopgo.hk')
+  const root = String(config.public.tenantRootDomain || 'shopgo.com.hk')
   const host = getRequestURL(event).host
   const slug = parseTenantSlugFromHost(host, root)
   if (!slug) {

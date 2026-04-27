@@ -64,7 +64,7 @@ async function onSubmit() {
     </h1>
     <p class="mt-2 text-sm text-neutral-600">
       建立商店代號與管理員帳號。完成後可造訪
-      <span class="font-mono text-neutral-800">{{ shopSlug || 'your-shop' }}.shopgo.hk</span>
+      <span class="font-mono text-neutral-800">{{ shopSlug || 'your-shop' }}.shopgo.com.hk</span>
     </p>
 
     <form class="mt-8 space-y-4" @submit.prevent="onSubmit">

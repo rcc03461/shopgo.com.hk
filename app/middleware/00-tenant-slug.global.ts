@@ -13,7 +13,7 @@ export default defineNuxtRouteMiddleware(() => {
   }
 
   const config = useRuntimeConfig()
-  const root = String(config.public.tenantRootDomain || 'shopgo.hk')
+  const root = String(config.public.tenantRootDomain || 'shopgo.com.hk')
   const host = getRequestHostForMiddleware()
   const slug = parseTenantSlugFromHost(host, root)
   state.value = slug

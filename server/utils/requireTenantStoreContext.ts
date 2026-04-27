@@ -10,7 +10,7 @@ export async function requireTenantStoreContext(event: H3Event): Promise<{
   shopSlug: string
 }> {
   const config = useRuntimeConfig(event)
-  const root = String(config.public.tenantRootDomain || 'shopgo.hk')
+  const root = String(config.public.tenantRootDomain || 'shopgo.com.hk')
   const host = getRequestURL(event).host
   const shopSlug = parseTenantSlugFromHost(host, root)
   if (!shopSlug) {

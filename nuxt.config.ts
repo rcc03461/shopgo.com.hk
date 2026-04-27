@@ -32,7 +32,7 @@ export default defineNuxtConfig({
     '/profile/**': { ssr: false },
   },
 
-  // Windows 上 hosts 將 shopgo.hk 指到 127.0.0.1（IPv4），若 dev 只綁 ::1 會 ERR_CONNECTION_REFUSED
+  // Windows 上 hosts 將 shopgo.com.hk 指到 127.0.0.1（IPv4），若 dev 只綁 ::1 會 ERR_CONNECTION_REFUSED
   devServer: {
     host: '0.0.0.0',
   },
@@ -40,7 +40,7 @@ export default defineNuxtConfig({
   vite: {
     server: {
       // 自訂網域開發時避免 Vite 擋 Host（監聽位址請用 package.json 的 dev --host）
-      allowedHosts: ['shopgo.hk', '.shopgo.hk', 'localhost', '127.0.0.1'],
+      allowedHosts: ['shopgo.com.hk', '.shopgo.com.hk', 'localhost', '127.0.0.1'],
     },
   },
 
@@ -48,7 +48,7 @@ export default defineNuxtConfig({
     public: {
       /** 租戶子網域根（Cookie Domain 與導向網址用） */
       tenantRootDomain:
-        process.env.NUXT_PUBLIC_TENANT_ROOT_DOMAIN || 'shopgo.hk',
+        process.env.NUXT_PUBLIC_TENANT_ROOT_DOMAIN || 'shopgo.com.hk',
       /** 登入／註冊後預設後台路徑 */
       adminDefaultPath:
         process.env.NUXT_PUBLIC_ADMIN_DEFAULT_PATH || '/admin/dashboard',

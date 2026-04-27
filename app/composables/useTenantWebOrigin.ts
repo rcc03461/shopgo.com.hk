@@ -3,7 +3,7 @@
  */
 export function useTenantWebOrigin(shopSlug: string): string {
   const config = useRuntimeConfig()
-  const root = String(config.public.tenantRootDomain || 'shopgo.hk')
+  const root = String(config.public.tenantRootDomain || 'shopgo.com.hk')
     .trim()
     .toLowerCase()
   const slug = shopSlug.trim().toLowerCase()

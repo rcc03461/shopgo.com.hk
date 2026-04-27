@@ -115,7 +115,7 @@ const totalPages = computed(() => {
       <p class="font-medium">目前網址不是商店子網域</p>
       <p class="mt-2 text-amber-800/90">
         請改以 <span class="font-mono">你的商店.{{
-          runtimeConfig.public.tenantRootDomain || 'shopgo.hk'
+          runtimeConfig.public.tenantRootDomain || 'shopgo.com.hk'
         }}</span> 開啟本頁，例如瀏覽商品列表與篩選。
       </p>
     </div>
