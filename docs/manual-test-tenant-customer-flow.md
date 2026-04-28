@@ -55,3 +55,10 @@
 - `GET /api/store/orders`：僅返回當前 customer 的資料
 - `GET /api/store/orders/:orderUuid`：tenant + customer 雙重限制
 - `POST /api/store/checkout`：只接受與當前 host tenant 一致的 customer session
+
+## G. 自訂網域（Custom domain）
+
+1. 套用 migration `0020` 後，後台可用 `GET/POST /api/admin/custom-domains`、`DELETE`、`POST .../verify`；於 DNS 新增 TXT，記錄名為 `_oshop-verify.{hostname}`，值為後台回傳的 `verificationToken`。
+2. 驗證通過後，同一 Host 的 storefront 應能載入；`GET /api/store/host-context` 須回傳正確的 `shopSlug`。
+3. **Session／Cookie**：`authCookie` 僅在 `*.{tenantRootDomain}` 設 `Domain=.root`；自訂網域為 **host-only** cookie，無法與平台子網域共用 Session；若要在自訂網域操作後台須在該 hostname 重新登入。
+4. 部署層面需自訂 TLS（反向代理／CDN），本 repo 不涵蓋。
