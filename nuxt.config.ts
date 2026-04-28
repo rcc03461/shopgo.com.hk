@@ -40,7 +40,7 @@ export default defineNuxtConfig({
   vite: {
     server: {
       // 自訂網域開發時避免 Vite 擋 Host（監聽位址請用 package.json 的 dev --host）
-      allowedHosts: ['shopgo.com.hk', '.shopgo.com.hk', 'localhost', '127.0.0.1'],
+      allowedHosts: ['shopgo.com.hk', '.shopgo.com.hk', 'localhost', '127.0.0.1', 'oshop.com.hk', '.oshop.com.hk'],
     },
   },
 
@@ -52,7 +52,7 @@ export default defineNuxtConfig({
       /** 登入／註冊後預設後台路徑 */
       adminDefaultPath:
         process.env.NUXT_PUBLIC_ADMIN_DEFAULT_PATH || '/admin/dashboard',
-      /** 自訂網域：店家 CNAME 目標（例 origin.shopgo.com.hk）；空則後台顯示「請向平台索取」 */
+      /** 與 Cloudflare Custom Hostnames 的 Fallback Origin FQDN 須逐字相同（例 origin.shopgo.com.hk） */
       saasCnameTarget:
         (process.env.NUXT_PUBLIC_SAAS_CNAME_TARGET || '').trim(),
       /** 選填：自訂網域對外說明或工單頁連結 */

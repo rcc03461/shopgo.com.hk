@@ -11,7 +11,20 @@
 - 只做 **A**：可能有憑證，但應用查不到租戶（或錯店）。  
 - 只做 **B**：後台顯示已驗證，但瀏覽器連線可能 1001 / 無 TLS。  
 
-**後台「設定 → 自訂網域」**：可在部署時設定 `NUXT_PUBLIC_SAAS_CNAME_TARGET`（店家 CNAME 目標主機名）、`NUXT_PUBLIC_SAAS_SUPPORT_DOC_URL`（選填說明連結），畫面會帶著店家一步步操作。詳見 `.env.example`。
+**後台「設定 → 自訂網域」**：部署時將 **Fallback Origin 的完整主機名** 設入 `NUXT_PUBLIC_SAAS_CNAME_TARGET`（與 Cloudflare 後台逐字相同），租戶 CNAME 就填這個值。可選 `NUXT_PUBLIC_SAAS_SUPPORT_DOC_URL`。詳見 `.env.example` 與下方「租戶 CNAME 填什麼」。
+
+---
+
+## 租戶的「流量 CNAME」要填什麼？（給平台方）
+
+**答案只有一個：** 與你在 **Cloudflare → SSL/TLS → Custom Hostnames** 裡設定的 **Fallback Origin** **完全一致**的那個 FQDN（例如 `origin.shopgo.com.hk`）。
+
+| 角色 | 要做的事 |
+|------|----------|
+| **你（平台）** | ① 在 **shopgo 的 zone** 建一筆 **橘雲** DNS（例：`origin` → 指向真實伺服器）。② Custom Hostnames 頁的 **Fallback Origin** 填入 **`origin.shopgo.com.hk`**（與該 DNS 主機名相同）。③ 把同一串字放進部署環境 **`NUXT_PUBLIC_SAAS_CNAME_TARGET`**，後台指引會顯示給租戶。 |
+| **租戶** | 在他的 DNS 設：`shop`（或完整子網域）**CNAME →** `origin.shopgo.com.hk`（即你環境變數裡的那個值）。**不要**填 `shopgo.com.hk`，除非那筆記錄正好是你要的 Fallback（一般不建議）。 |
+
+若未設 Fallback Origin 或租戶指錯目標，容易出現 **Cloudflare 1001**。
 
 ---
 
@@ -39,16 +52,19 @@
 **自動化（可選）**：同一頁下方的 API 可用於之後由後台呼叫  
 `POST /client/v4/zones/{zone_id}/custom_hostnames` 建立（需 API Token 權限）。
 
-### 1.3 DCV（憑證驗證）— Cloudflare 給的 `_acme-challenge`（常為必做）
+### 1.3 DCV（憑證驗證）— `_acme-challenge` 與流量 CNAME **不同**
 
-為了替 `shop.yching.hk` 簽 **邊界憑證**，Cloudflare 通常要求店家在 **自己的 DNS**（`yching.hk` 的服務商）新增一筆 **DCV** 用的 CNAME，格式接近：
+為了替 `shop.yching.hk` 簽 **HTTPS 憑證**，Cloudflare 常要求店家另加一筆 **DCV** CNAME（畫面上的 **DCV Delegation**），格式通常為：
 
 ```text
-_acme-challenge.shop.yching.hk   CNAME   <Cloudflare 畫面上顯示的目標，例如 *.daff.dcv.cloudflare.com>
+_acme-challenge.shop   CNAME   shop.yching.hk.<你帳戶專用>.dcv.cloudflare.com
 ```
 
-- **名稱／主機** 以 **Custom Hostname 詳情頁** 顯示為準（不要手抄別人範例）。  
-- 不需和 OShop 的 `_oshop-verify` 搞混：兩者 **可以並存**，用途不同（見下節「店家 DNS 總表」）。
+- **名稱** 可能是 `_acme-challenge.shop` 或完整 `_acme-challenge.shop.yching.hk`（依 DNS 面板而定）。  
+- **目標** 以 **Custom Hostname `shop.yching.hk` 的詳情頁** 為準（例如 `*.daff.dcv.cloudflare.com` 這類，**每個帳戶／主機名可能不同**）。  
+- 這一筆只負責 **憑證**；**流量**仍靠上一節的 **shop → Fallback Origin**。
+
+上一節流量 CNAME **不要**填成 `dcv.cloudflare.com` 那串——那是憑證驗證專用。
 
 ---
 
@@ -71,7 +87,7 @@ _acme-challenge.shop.yching.hk   CNAME   <Cloudflare 畫面上顯示的目標，
 
 | 類型 | 主機／名稱（依供應商介面） | 值／目標 | 用途 |
 |------|---------------------------|----------|------|
-| **CNAME** | `shop`（或 `shop.yching.hk`） | **平台提供**：通常為 **Fallback Origin 主機名**（例 `origin.shopgo.com.hk`），**以平台方文件／CF 後台為準**。**不要**隨意指到 `shopgo.com.hk` 首頁網域，除非平台明確宣告該 FQDN 即 fallback。 | 把流量導向 SaaS；修正 **Error 1001** 常見關鍵 |
+| **CNAME** | `shop`（或 `shop.yching.hk`） | **等於 Cloudflare Fallback Origin**（例 `origin.shopgo.com.hk`）；須與平台 `NUXT_PUBLIC_SAAS_CNAME_TARGET` 相同。**勿**用首頁 `shopgo.com.hk` 代替，除非你已把首頁記錄也設成 Proxied 且 CF 後台 Fallback 就是它（少見）。 | 流量進 SaaS，降低 **1001** |
 | **TXT** | `_oshop-verify.shop` 或完整 `_oshop-verify.shop.yching.hk` | OShop 後台顯示的 **verificationToken** | **租戶歸屬**（OShop DB） |
 | **CNAME** | `_acme-challenge.shop` | Cloudflare **Custom Hostname** 詳情頁給的 **DCV 目標** | **HTTPS 憑證**（Cloudflare） |
 

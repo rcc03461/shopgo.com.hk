@@ -248,12 +248,21 @@ function formatTime(iso: string | null): string {
         <ol class="list-decimal space-y-3 pl-5 text-sm leading-relaxed">
           <li>
             <strong>流量導向（必做）</strong>：在網域 DNS 新增
-            <strong>CNAME</strong>，將你要使用的子網域（例如
+            <strong>CNAME</strong>，將你要用的前綴（例：
             <code class="rounded bg-white/80 px-1 py-0.5 text-xs">shop</code>
-            ）指向平台提供的主機名。
+            → 即完整網址
+            <code class="rounded bg-white/80 px-1 py-0.5 text-xs">shop.你的網域</code>
+            ）指向下方顯示的<strong>主機名</strong>。
+            <br>
+            <span class="mt-1 block text-xs text-sky-900/85">
+              這個主機名在 Cloudflare 後台叫做 <strong>Fallback Origin</strong>（與首頁
+              <code class="rounded bg-white/60 px-0.5">shopgo.com.hk</code>
+              無關）。平台會把它設成環境變數並顯示在此；若你仍是錯誤的 CNAME 目標，可能出現
+              <strong>1001</strong>。
+            </span>
             <template v-if="saasCnameTarget">
               <br>
-              <span class="mt-1 inline-block text-xs">目前平台顯示的目標：</span>
+              <span class="mt-1 inline-block text-xs font-medium">租戶 CNAME「目標／指向」請填：</span>
               <code class="mt-0.5 block w-fit break-all rounded bg-white px-2 py-1 text-xs ring-1 ring-sky-200">{{ saasCnameTarget }}</code>
               <button
                 type="button"
@@ -264,14 +273,25 @@ function formatTime(iso: string | null): string {
               </button>
             </template>
             <template v-else>
-              <span class="text-xs text-sky-900/90">（請向平台／客服索取<strong>正確的 CNAME 目標</strong>，勿隨意指向首頁網域；未完成時可能出現 Cloudflare <strong>1001</strong> 等錯誤。）</span>
+              <span class="mt-1 block text-xs text-sky-900/90">
+                平台尚未設定顯示值。請向客服索取與 Cloudflare
+                <strong>Fallback Origin</strong>
+                相同的那一串主機名（例
+                <code class="rounded bg-white/60 px-0.5">origin.shopgo.com.hk</code>），
+                並請平台在部署環境設定
+                <code class="rounded bg-white/60 px-0.5">NUXT_PUBLIC_SAAS_CNAME_TARGET</code>。
+              </span>
             </template>
           </li>
           <li>
-            <strong>HTTPS 憑證（使用 Cloudflare for SaaS 時必做）</strong>：依平台或 Cloudflare 通知，在 DNS 新增憑證驗證用的
-            <strong>CNAME</strong>（常見為
-            <code class="rounded bg-white/80 px-1 text-xs">_acme-challenge.你的子網域</code>
-            指向指定目標）。名稱與值<strong>以平台／Cloudflare 後台或信件為準</strong>，與本頁 TXT 不同。
+            <strong>HTTPS 憑證（Cloudflare for SaaS / DCV）</strong>：除上面的流量 CNAME 外，通常還要另一筆
+            <strong>CNAME</strong>，主機名多為
+            <code class="rounded bg-white/80 px-1 text-xs">_acme-challenge.shop</code>
+            （或完整
+            <code class="rounded bg-white/80 px-1 text-xs">_acme-challenge.shop.你的網域</code>
+            ），目標為 Cloudflare 畫面上<strong>專用驗證網址</strong>（常含
+            <code class="rounded bg-white/80 px-1 text-xs">.dcv.cloudflare.com</code>，
+            以 Custom Hostname 詳情為準）。<strong>與流量 CNAME 不同：不要把你整個 shop 子網域指到 dcv 那串。</strong>
           </li>
           <li>
             <strong>商店歸屬（必做）</strong>：於下方「新增網域」送出後，依畫面上黃色區塊新增
