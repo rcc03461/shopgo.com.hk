@@ -85,6 +85,93 @@ const actionErr = ref<string | null>(null)
 const actionOk = ref<string | null>(null)
 const busyId = ref<string | null>(null)
 
+const saasDcvDelegationSuffix = computed(() =>
+  String(
+    (config.public as { saasDcvDelegationSuffix?: string }).saasDcvDelegationSuffix ||
+      '',
+  ).trim(),
+)
+
+/** DNS 表用：剛新增的提示 → 輸入框 → 列表首筆未驗證 */
+const guideHostname = computed(() => {
+  if (dnsHint.value?.hostname) return dnsHint.value.hostname
+  const t = newHostname.value.trim()
+  if (t) return t
+  const items = data.value?.items
+  const pending = items?.find((i) => !i.verifiedAt)
+  return pending?.hostname ?? ''
+})
+
+const tableDcvTarget = computed(() => {
+  const h = guideHostname.value
+  const s = saasDcvDelegationSuffix.value
+  if (!h || !s) return ''
+  return `${h}.${s}`
+})
+
+const tableAcmeName = computed(() => {
+  const h = guideHostname.value
+  return h ? `_acme-challenge.${h}` : ''
+})
+
+const tableTxtName = computed(() => {
+  const h = guideHostname.value
+  return h ? txtHostFor(h) : ''
+})
+
+const tableTxtValuePreview = computed(() => dnsHint.value?.verificationToken ?? '')
+
+function copyTrafficTarget() {
+  const t = saasCnameTarget.value
+  if (!t) {
+    actionErr.value = '平台尚未設定 CNAME 目標，請聯絡客服。'
+    actionOk.value = null
+    return
+  }
+  void copyPlainText(t, '流量 CNAME 目標已複製。')
+}
+
+function copyDcvName() {
+  const n = tableAcmeName.value
+  if (!n) {
+    actionErr.value = '請先在下方輸入完整網域或新增網域。'
+    actionOk.value = null
+    return
+  }
+  void copyPlainText(n, 'HTTPS 驗證主機名已複製。')
+}
+
+function copyDcvTargetRow() {
+  const t = tableDcvTarget.value
+  if (!t) {
+    actionErr.value =
+      '請填入主機名並由平台設定 DCV 後綴，或到 Cloudflare Custom Hostname 詳情手動複製驗證目標。'
+    actionOk.value = null
+    return
+  }
+  void copyPlainText(t, 'HTTPS 驗證目標已複製。')
+}
+
+function copyTableTxtName() {
+  const n = tableTxtName.value
+  if (!n) {
+    actionErr.value = '請先輸入完整網域名稱。'
+    actionOk.value = null
+    return
+  }
+  void copyPlainText(n, 'TXT 主機名已複製。')
+}
+
+function copyTableTxtValue() {
+  const v = tableTxtValuePreview.value
+  if (!v) {
+    actionErr.value = '請先「新增網域」取得驗證碼（僅新增當下顯示）。'
+    actionOk.value = null
+    return
+  }
+  void copyPlainText(v, 'TXT 驗證碼已複製。')
+}
+
 function errMessage(e: unknown): string {
   const x = e as { data?: { message?: string }; message?: string }
   return x?.data?.message || x?.message || '操作失敗'
@@ -245,70 +332,166 @@ function formatTime(iso: string | null): string {
           >開啟平台說明</a>
         </p>
 
-        <ol class="list-decimal space-y-3 pl-5 text-sm leading-relaxed">
-          <li>
-            <strong>流量導向（必做）</strong>：在網域 DNS 新增
-            <strong>CNAME</strong>，將你要用的前綴（例：
-            <code class="rounded bg-white/80 px-1 py-0.5 text-xs">shop</code>
-            → 即完整網址
-            <code class="rounded bg-white/80 px-1 py-0.5 text-xs">shop.你的網域</code>
-            ）指向下方顯示的<strong>主機名</strong>。
-            <br>
-            <span class="mt-1 block text-xs text-sky-900/85">
-              這個主機名在 Cloudflare 後台叫做 <strong>Fallback Origin</strong>（與首頁
-              <code class="rounded bg-white/60 px-0.5">shopgo.com.hk</code>
-              無關）。平台會把它設成環境變數並顯示在此；若你仍是錯誤的 CNAME 目標，可能出現
-              <strong>1001</strong>。
-            </span>
-            <template v-if="saasCnameTarget">
-              <br>
-              <span class="mt-1 inline-block text-xs font-medium">租戶 CNAME「目標／指向」請填：</span>
-              <code class="mt-0.5 block w-fit break-all rounded bg-white px-2 py-1 text-xs ring-1 ring-sky-200">{{ saasCnameTarget }}</code>
-              <button
-                type="button"
-                class="mt-1 text-xs text-sky-800 underline hover:text-sky-950"
-                @click="copyPlainText(saasCnameTarget, 'CNAME 目標已複製。')"
-              >
-                複製主機名
-              </button>
-            </template>
-            <template v-else>
-              <span class="mt-1 block text-xs text-sky-900/90">
-                平台尚未設定顯示值。請向客服索取與 Cloudflare
-                <strong>Fallback Origin</strong>
-                相同的那一串主機名（例
-                <code class="rounded bg-white/60 px-0.5">origin.shopgo.com.hk</code>），
-                並請平台在部署環境設定
-                <code class="rounded bg-white/60 px-0.5">NUXT_PUBLIC_SAAS_CNAME_TARGET</code>。
-              </span>
-            </template>
-          </li>
-          <li>
-            <strong>HTTPS 憑證（Cloudflare for SaaS / DCV）</strong>：除上面的流量 CNAME 外，通常還要另一筆
-            <strong>CNAME</strong>，主機名多為
-            <code class="rounded bg-white/80 px-1 text-xs">_acme-challenge.shop</code>
-            （或完整
-            <code class="rounded bg-white/80 px-1 text-xs">_acme-challenge.shop.你的網域</code>
-            ），目標為 Cloudflare 畫面上<strong>專用驗證網址</strong>（常含
-            <code class="rounded bg-white/80 px-1 text-xs">.dcv.cloudflare.com</code>，
-            以 Custom Hostname 詳情為準）。<strong>與流量 CNAME 不同：不要把你整個 shop 子網域指到 dcv 那串。</strong>
-          </li>
-          <li>
-            <strong>商店歸屬（必做）</strong>：於下方「新增網域」送出後，依畫面上黃色區塊新增
-            <strong>TXT</strong>
-            <code class="rounded bg-white/80 px-1 text-xs">_oshop-verify.你的完整網域</code>
-            ，再按「檢查驗證」。通過後本系統才會把此網域對應到你的商店。
-          </li>
-          <li>
-            每完成一類 DNS 變更後，傳播可能需要數分鐘至數小時；可稍候再按「檢查驗證」。
-          </li>
-        </ol>
+        <p class="text-xs text-sky-900/90">
+          多數情況需在網域 DNS <strong>新增下列三筆</strong>（可全選複製欄位）。DNS 後台用詞可能是「類型／主機／目標／值」。
+          <span
+            v-if="guideHostname"
+            class="mt-1 block font-mono text-[0.7rem] text-sky-950"
+          >目前表格依此主機名產生：<strong>{{ guideHostname }}</strong></span>
+        </p>
+
+        <div class="overflow-x-auto rounded-md border border-sky-200/80 bg-white/90">
+          <table class="w-full min-w-[32rem] text-left text-xs text-sky-950">
+            <thead>
+              <tr class="border-b border-sky-200 bg-sky-100/60">
+                <th class="px-3 py-2 font-semibold whitespace-nowrap">
+                  #
+                </th>
+                <th class="px-3 py-2 font-semibold whitespace-nowrap">
+                  用途
+                </th>
+                <th class="px-3 py-2 font-semibold whitespace-nowrap">
+                  類型
+                </th>
+                <th class="px-3 py-2 font-semibold">
+                  主機／名稱（貼到 DNS）
+                </th>
+                <th class="px-3 py-2 font-semibold">
+                  目標／內容
+                </th>
+                <th class="px-3 py-2 font-semibold whitespace-nowrap">
+                  複製
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-sky-100">
+              <tr class="align-top">
+                <td class="px-3 py-2.5 whitespace-nowrap text-neutral-500">
+                  1
+                </td>
+                <td class="px-3 py-2.5">
+                  流量 → 平台
+                </td>
+                <td class="px-3 py-2.5 whitespace-nowrap">
+                  CNAME
+                </td>
+                <td class="px-3 py-2.5 text-neutral-700">
+                  你的子網域前綴<br>
+                  <span class="text-[0.65rem] text-neutral-500">（例：<code class="rounded bg-neutral-100 px-0.5">shop</code> 對應 <code class="rounded bg-neutral-100 px-0.5">shop.你的網域</code>）</span>
+                </td>
+                <td class="px-3 py-2.5 break-all font-mono text-[0.7rem]">
+                  <template v-if="saasCnameTarget">{{ saasCnameTarget }}</template>
+                  <template v-else>
+                    <span class="text-amber-800">請向平台索取（Fallback Origin）</span>
+                  </template>
+                </td>
+                <td class="px-3 py-2.5">
+                  <button
+                    type="button"
+                    class="text-sky-800 underline hover:text-sky-950 disabled:opacity-50"
+                    :disabled="!saasCnameTarget"
+                    @click="copyTrafficTarget"
+                  >
+                    目標
+                  </button>
+                </td>
+              </tr>
+              <tr class="align-top">
+                <td class="px-3 py-2.5 whitespace-nowrap text-neutral-500">
+                  2
+                </td>
+                <td class="px-3 py-2.5">
+                  HTTPS 驗證
+                </td>
+                <td class="px-3 py-2.5 whitespace-nowrap">
+                  CNAME
+                </td>
+                <td class="px-3 py-2.5 break-all font-mono text-[0.7rem]">
+                  <template v-if="tableAcmeName">{{ tableAcmeName }}</template>
+                  <template v-else>
+                    <span class="text-neutral-500">（先輸入主機名）</span>
+                  </template>
+                  <p class="mt-1 font-sans text-[0.65rem] text-neutral-500">
+                    部分廠商需改填
+                    <code class="rounded bg-neutral-100 px-0.5">_acme-challenge.子網域</code>
+                  </p>
+                </td>
+                <td class="px-3 py-2.5 break-all font-mono text-[0.7rem]">
+                  <template v-if="tableDcvTarget">{{ tableDcvTarget }}</template>
+                  <template v-else>
+                    <span class="text-neutral-500">（主機名 + 平台 DCV 後綴，或見 Cloudflare）</span>
+                  </template>
+                </td>
+                <td class="px-3 py-2.5 whitespace-nowrap">
+                  <button
+                    type="button"
+                    class="mr-2 text-sky-800 underline hover:text-sky-950 disabled:opacity-50"
+                    :disabled="!tableAcmeName"
+                    @click="copyDcvName"
+                  >
+                    主機
+                  </button>
+                  <button
+                    type="button"
+                    class="text-sky-800 underline hover:text-sky-950 disabled:opacity-50"
+                    :disabled="!tableDcvTarget"
+                    @click="copyDcvTargetRow"
+                  >
+                    目標
+                  </button>
+                </td>
+              </tr>
+              <tr class="align-top">
+                <td class="px-3 py-2.5 whitespace-nowrap text-neutral-500">
+                  3
+                </td>
+                <td class="px-3 py-2.5">
+                  商店驗證
+                </td>
+                <td class="px-3 py-2.5 whitespace-nowrap">
+                  TXT
+                </td>
+                <td class="px-3 py-2.5 break-all font-mono text-[0.7rem]">
+                  <template v-if="tableTxtName">{{ tableTxtName }}</template>
+                  <template v-else>
+                    <span class="text-neutral-500">（先輸入主機名）</span>
+                  </template>
+                </td>
+                <td class="px-3 py-2.5 break-all font-mono text-[0.7rem]">
+                  <template v-if="tableTxtValuePreview">{{ tableTxtValuePreview }}</template>
+                  <template v-else>
+                    <span class="text-neutral-500">新增網域後取得</span>
+                  </template>
+                </td>
+                <td class="px-3 py-2.5 whitespace-nowrap">
+                  <button
+                    type="button"
+                    class="mr-2 text-sky-800 underline hover:text-sky-950 disabled:opacity-50"
+                    :disabled="!tableTxtName"
+                    @click="copyTableTxtName"
+                  >
+                    主機
+                  </button>
+                  <button
+                    type="button"
+                    class="text-sky-800 underline hover:text-sky-950 disabled:opacity-50"
+                    :disabled="!tableTxtValuePreview"
+                    @click="copyTableTxtValue"
+                  >
+                    內容
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="text-xs text-sky-900/85">
+          變更 DNS 後傳播可能需數分鐘至數小時。第 3 筆完成後請按下方「檢查驗證」。若遺失 TXT 驗證碼請移除此網域再新增。
+        </p>
 
         <div class="rounded-md bg-white/70 px-3 py-2 text-xs text-sky-900 ring-1 ring-sky-200/70">
-          <strong>常見問題：</strong>
-          「已驗證」僅代表本系統已確認 TXT；
-          若瀏覽器仍無法開啟 HTTPS，請確認步驟 1、2 已在 DNS 生效。
-          若遺失 TXT 驗證碼，請「移除」該網域後重新新增，會產生新的驗證碼。
+          <strong>提示：</strong>HTTPS（第 2 筆）目標須與 Cloudflare Custom Hostname 一致；平台若已設定環境變數會自動組字串，否則請到 Cloudflare 詳情複製。
         </div>
       </div>
     </details>

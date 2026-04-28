@@ -58,6 +58,9 @@ export default defineNuxtConfig({
       /** 選填：自訂網域對外說明或工單頁連結 */
       saasSupportDocUrl:
         (process.env.NUXT_PUBLIC_SAAS_SUPPORT_DOC_URL || '').trim(),
+      /** 選填：Cloudflare DCV 後綴（*.dcv.cloudflare.com），與主機名組成 HTTPS 驗證 CNAME 目標 */
+      saasDcvDelegationSuffix:
+        (process.env.NUXT_PUBLIC_SAAS_DCV_DELEGATION_SUFFIX || '').trim(),
     },
     databaseUrl: process.env.DATABASE_URL || '',
     dbHost: process.env.db_host || process.env.DB_HOST || '',
