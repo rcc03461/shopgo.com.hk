@@ -1,10 +1,10 @@
-import { getCookie, getRequestURL, createError } from 'h3'
+import { getCookie, createError } from 'h3'
 import type { H3Event } from 'h3'
-import { parseTenantSlugFromHost } from '../../app/utils/tenantHost'
 import { AUTH_COOKIE, verifySessionToken, type SessionPayload } from './authJwt'
+import { tryResolveStoreTenant } from './resolveStoreTenantFromHost'
 
 /**
- * Admin API：驗證登入 Cookie，並確認 Host 子網域與 JWT shopSlug 一致。
+ * Admin API：驗證登入 Cookie，並確認請求 Host 與 JWT tenant 一致（含自訂網域）。
  */
 export async function requireTenantSession(event: H3Event): Promise<SessionPayload> {
   const token = getCookie(event, AUTH_COOKIE)
@@ -13,12 +13,13 @@ export async function requireTenantSession(event: H3Event): Promise<SessionPaylo
   }
 
   const session = await verifySessionToken(event, token)
-  const config = useRuntimeConfig(event)
-  const root = String(config.public.tenantRootDomain || 'shopgo.com.hk')
-  const host = getRequestURL(event).host
-  const slug = parseTenantSlugFromHost(host, root)
+  const resolved = await tryResolveStoreTenant(event)
 
-  if (!slug || slug !== session.shopSlug) {
+  if (
+    !resolved ||
+    resolved.id !== session.tenantId ||
+    resolved.shopSlug !== session.shopSlug
+  ) {
     throw createError({ statusCode: 403, message: '商店網域與登入狀態不符' })
   }
 
