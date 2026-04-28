@@ -5,6 +5,7 @@
  *
  * 用法：bun run db:migrate
  */
+import './load-env-from-dotenv.js'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readMigrationFiles } from 'drizzle-orm/migrator'

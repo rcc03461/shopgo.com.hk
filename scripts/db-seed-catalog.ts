@@ -5,6 +5,7 @@
  *   bun run db:seed:catalog
  *   bun run db:seed:catalog --tenant demo --categories 10 --products 20
  */
+import './load-env-from-dotenv.js'
 import postgres from 'postgres'
 import { buildDatabaseUrlFromEnv } from '../server/database/connectionUrl'
 import { getPostgresJsSslOptions } from '../server/database/postgresOptions'
