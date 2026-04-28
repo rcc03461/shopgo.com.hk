@@ -131,6 +131,9 @@ async function save() {
         <NuxtLink to="/admin/settings/shipping" :class="tabClass('/admin/settings/shipping')">
           運送設定
         </NuxtLink>
+        <NuxtLink to="/admin/settings/domains" :class="tabClass('/admin/settings/domains')">
+          自訂網域
+        </NuxtLink>
       </div>
     </div>
 

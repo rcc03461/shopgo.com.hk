@@ -207,6 +207,12 @@ async function saveAll() {
         >
           運送設定
         </NuxtLink>
+        <NuxtLink
+          to="/admin/settings/domains"
+          :class="tabClass('/admin/settings/domains')"
+        >
+          自訂網域
+        </NuxtLink>
       </div>
     </div>
 
