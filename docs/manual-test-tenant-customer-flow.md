@@ -117,3 +117,5 @@
 | 開 `http://某自訂網域:3000` 被擋或 403 | 未把該 hostname 加入 `vite.server.allowedHosts` 或未重啟 dev |
 | 自訂網域後台要重新登入 | host-only cookie 與子網域不共用，屬預期 |
 | `host-context` 回 `null` | 網域未驗證、hostname 打錯、或 DB 無對應列 |
+
+**正式／Cloudflare for SaaS 全流程**（Fallback Origin、Custom Hostname、與後台 TXT 並行）：見 **`docs/custom-domain-cloudflare-saas-onboarding.md`**。

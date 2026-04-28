@@ -21,6 +21,7 @@
 - 主站先行（Landing / Login / Register）計劃與待辦：`docs/plan-main-site-landing-auth.md`
 - 主站登入轉租戶後台 + Admin 路由實作計劃：`docs/plan-tenant-admin-and-platform-login-redirect.md`
 - **開發待辦清單（可勾選）：`docs/TODO.md`**
+- **自訂網域 × Cloudflare for SaaS**（給平台與店家 DNS／後台全流程）：`docs/custom-domain-cloudflare-saas-onboarding.md`
 
 ## 規劃中的核心路由
 
